@@ -1,11 +1,11 @@
 /* game_test.cc — pure game-logic unit tests (Stream B.1).
  * GoogleTest; NOT plugin-checked, so normal C++ is fine here.
  */
+#include "minesweeper/game.h"
+
 #include <gtest/gtest.h>
 
 #include <vector>
-
-#include "minesweeper/game.h"
 
 /* ---- Scripted RNG ------------------------------------------------------- */
 /* Returns scripted values in sequence; each value is reduced mod n by the
@@ -24,7 +24,8 @@ static uint32_t script_rng(void *ctx, uint32_t n) {
 
 /* Place mines at an explicit list of (x,y) coords by scripting the rng:
  * game_place_mines draws x then y per attempt and skips dups/avoided. */
-static void script_coords(ScriptRng *s, std::initializer_list<std::pair<int, int>> coords) {
+static void script_coords(ScriptRng *s,
+                          std::initializer_list<std::pair<int, int>> coords) {
   for (auto &c : coords) {
     s->vals.push_back(static_cast<uint32_t>(c.first));
     s->vals.push_back(static_cast<uint32_t>(c.second));
@@ -177,7 +178,7 @@ TEST(Reveal, HittingMineLoses) {
   ScriptRng s;
   script_coords(&s, {{1, 0}});
   game_reset(&b, 9, 9, 1, script_rng, &s);
-  game_reveal(&b, 8, 8);  /* first click safe, places mine at (1,0) */
+  game_reveal(&b, 8, 8); /* first click safe, places mine at (1,0) */
   int r = game_reveal(&b, 1, 0);
   EXPECT_EQ(r, REVEAL_LOSS);
   EXPECT_EQ(b.status, GAME_LOST);
@@ -221,7 +222,7 @@ TEST(Reveal, AfterGameOverIsNoOp) {
   script_coords(&s, {{1, 0}});
   game_reset(&b, 9, 9, 1, script_rng, &s);
   game_reveal(&b, 8, 8);
-  game_reveal(&b, 1, 0);  /* lose */
+  game_reveal(&b, 1, 0); /* lose */
   int r = game_reveal(&b, 0, 0);
   EXPECT_EQ(r, REVEAL_NONE);
 }
@@ -234,7 +235,7 @@ TEST(Win, RevealAllNonMinesWinsAndAutoFlags) {
   ScriptRng s;
   script_coords(&s, {{2, 2}});
   game_reset(&b, 3, 3, 1, script_rng, &s);
-  int r = game_reveal(&b, 0, 0);  /* (0,0) is a 0 -> floods most */
+  int r = game_reveal(&b, 0, 0); /* (0,0) is a 0 -> floods most */
   EXPECT_EQ(r, REVEAL_WIN);
   EXPECT_EQ(b.status, GAME_WON);
   EXPECT_EQ(b.cells[game_index(&b, 2, 2)].flag, FLAG_MINE);
@@ -303,7 +304,7 @@ TEST(Chord, RevealsWhenFlagCountMatches) {
   game_reset(&b, 9, 9, 1, script_rng, &s);
   game_reveal(&b, 0, 0);
   EXPECT_EQ(b.cells[game_index(&b, 0, 0)].adjacent, 1);
-  game_cycle_flag(&b, 1, 0, false);  /* correct flag on the mine */
+  game_cycle_flag(&b, 1, 0, false); /* correct flag on the mine */
   int r = game_chord(&b, 0, 0);
   /* Neighbours (0,1),(1,1) revealed; they're zeros -> flood -> likely win. */
   EXPECT_TRUE(r == REVEAL_OK || r == REVEAL_WIN);
@@ -315,7 +316,7 @@ TEST(Chord, NoOpWhenFlagCountMismatch) {
   ScriptRng s;
   script_coords(&s, {{1, 0}});
   game_reset(&b, 9, 9, 1, script_rng, &s);
-  game_reveal(&b, 0, 0);  /* number 1, no flags placed */
+  game_reveal(&b, 0, 0); /* number 1, no flags placed */
   int r = game_chord(&b, 0, 0);
   EXPECT_EQ(r, REVEAL_NONE);
   EXPECT_FALSE(b.cells[game_index(&b, 0, 1)].revealed);
@@ -329,7 +330,7 @@ TEST(Chord, WrongFlagDetonates) {
   script_coords(&s, {{1, 0}});
   game_reset(&b, 9, 9, 1, script_rng, &s);
   game_reveal(&b, 0, 0);
-  game_cycle_flag(&b, 0, 1, false);  /* wrong flag, but count==1==number */
+  game_cycle_flag(&b, 0, 1, false); /* wrong flag, but count==1==number */
   int r = game_chord(&b, 0, 0);
   EXPECT_EQ(r, REVEAL_LOSS);
   EXPECT_EQ(b.status, GAME_LOST);
@@ -342,7 +343,7 @@ TEST(Chord, OnUnrevealedIsNoOp) {
   script_coords(&s, {{1, 0}});
   game_reset(&b, 9, 9, 1, script_rng, &s);
   game_reveal(&b, 8, 8);
-  int r = game_chord(&b, 0, 0);  /* (0,0) not revealed */
+  int r = game_chord(&b, 0, 0); /* (0,0) not revealed */
   EXPECT_EQ(r, REVEAL_NONE);
 }
 
@@ -354,8 +355,8 @@ TEST(Chord, QuestionMarkDoesNotCount) {
   script_coords(&s, {{1, 0}});
   game_reset(&b, 9, 9, 1, script_rng, &s);
   game_reveal(&b, 0, 0);
-  game_cycle_flag(&b, 1, 0, true);  /* -> FLAG_MINE */
-  game_cycle_flag(&b, 1, 0, true);  /* -> FLAG_QUESTION (count back to 0) */
+  game_cycle_flag(&b, 1, 0, true); /* -> FLAG_MINE */
+  game_cycle_flag(&b, 1, 0, true); /* -> FLAG_QUESTION (count back to 0) */
   EXPECT_EQ(b.cells[game_index(&b, 1, 0)].flag, FLAG_QUESTION);
   int r = game_chord(&b, 0, 0);
   EXPECT_EQ(r, REVEAL_NONE);

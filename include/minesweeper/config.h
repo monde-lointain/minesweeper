@@ -17,7 +17,8 @@ void config_defaults(struct Settings *s);
  * returns nonzero; full success returns 0. Missing keys keep their defaults. */
 int config_load(struct Settings *s, const char *path);
 
-/* Write settings to INI at `path`. Returns 0 on success, nonzero on I/O error. */
+/* Write settings to INI at `path`. Returns 0 on success, nonzero on I/O error.
+ */
 int config_save(const struct Settings *s, const char *path);
 
 #endif /* MINESWEEPER_CONFIG_H */

@@ -1,10 +1,9 @@
 /* config_test.cc — headless save->load round-trip + edge cases (GoogleTest). */
-#include <gtest/gtest.h>
+#include "minesweeper/config.h"
 
+#include <gtest/gtest.h>
 #include <stdio.h>
 #include <string.h>
-
-#include "minesweeper/config.h"
 
 namespace {
 
@@ -92,7 +91,8 @@ TEST(ConfigTest, LoadMissingYieldsDefaults) {
 }
 
 TEST(ConfigTest, ClampsOutOfRange) {
-  /* Hand-write an INI with out-of-range scale and mines and a bad difficulty. */
+  /* Hand-write an INI with out-of-range scale and mines and a bad difficulty.
+   */
   FILE *f = fopen(kPath, "w");
   ASSERT_NE(f, nullptr);
   fprintf(f,
@@ -106,9 +106,9 @@ TEST(ConfigTest, ClampsOutOfRange) {
 
   Settings s;
   ASSERT_EQ(config_load(&s, kPath), 0);
-  EXPECT_EQ(s.scale, 4);                 /* clamped 1..4 */
-  EXPECT_EQ(s.difficulty, DIFF_CUSTOM);  /* clamped 0..3 */
-  EXPECT_EQ(s.custom_mines, 9 * 9 - 1);  /* clamped to w*h-1 */
+  EXPECT_EQ(s.scale, 4);                /* clamped 1..4 */
+  EXPECT_EQ(s.difficulty, DIFF_CUSTOM); /* clamped 0..3 */
+  EXPECT_EQ(s.custom_mines, 9 * 9 - 1); /* clamped to w*h-1 */
 }
 
 TEST(ConfigTest, MissingKeysKeepDefaults) {
