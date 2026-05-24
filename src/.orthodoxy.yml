@@ -1,0 +1,31 @@
+---
+# Strict Orthodox C++ for our own sources. Polarity: false = DISALLOW the
+# feature, true/unset = allow. InheritParent:false so dependency headers under
+# build/_deps (governed by the permissive root config) are never affected.
+# ImGui/STL boundary lines in ui.cc/app.cc/config.cc use
+# /* HERESY(rule-name) */ suppressions.
+InheritParent: false
+
+# Disallowed Modern C++ (false = enforce).
+Class: false
+Constructor: false
+Destructor: false
+Inheritance: false
+MemberFunction: false
+EnumClass: false
+NamedCast: false
+Overload: false
+Reference: false
+Lambda: false
+New: false
+Auto: false
+UserDefinedLiteral: false
+DefaultArgument: false
+Mutable: false
+RangeBasedLoop: false
+Namespace: false
+Exception: false
+
+# Allowed C-style constructs (true) — explicit for clarity.
+CStyleCast: true
+Template: true
