@@ -442,8 +442,7 @@ static void app_apply_actions(struct AppState *s, const struct UiActions *a) {
   if (a->name_entered && s->pending_name_level >= 0) {
     int lvl = s->pending_name_level;
     s->settings.best_time[lvl] = s->elapsed_sec;
-    strncpy(s->settings.best_name[lvl], a->name, SCORE_NAME_MAX - 1);
-    s->settings.best_name[lvl][SCORE_NAME_MAX - 1] = '\0';
+    snprintf(s->settings.best_name[lvl], SCORE_NAME_MAX, "%s", a->name);
     s->pending_name_level = -1;
     config_save(&s->settings, s->pref_path);
   }
