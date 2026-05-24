@@ -16,6 +16,9 @@ Checks: >
   -readability-braces-around-statements,
   -readability-isolate-declaration,
   -readability-avoid-nested-conditional-operator,
+  -readability-uppercase-literal-suffix,
+  -readability-redundant-casting,
+  -readability-simplify-boolean-expr,
   -performance-enum-size,
   -clang-diagnostic-unused-macros
 HeaderFilterRegex: 'include/minesweeper/.*'
