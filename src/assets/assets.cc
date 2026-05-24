@@ -105,19 +105,26 @@ void assets_set_color(struct Assets *a, bool color) {
   }
 }
 
+/* The original winmine sheets store their cells in REVERSE vertical order:
+ * sprite index 0 occupies the BOTTOM band (glyphs themselves upright), index
+ * (count-1) the top. SDL_LoadBMP preserves that order, so the sub-rect for an
+ * enum index must be measured from the bottom: row = (count-1) - index. */
 SDL_FRect assets_block_rect(int sprite) {
-  SDL_FRect r = {0.0F, (float)(sprite * BLOCK_PX), (float)BLOCK_PX,
+  int row = (SPR_BLOCK_COUNT - 1) - sprite;
+  SDL_FRect r = {0.0F, (float)(row * BLOCK_PX), (float)BLOCK_PX,
                  (float)BLOCK_PX};
   return r;
 }
 
 SDL_FRect assets_led_rect(int digit) {
-  SDL_FRect r = {0.0F, (float)(digit * LED_H), (float)LED_W, (float)LED_H};
+  int row = (LED_COUNT - 1) - digit;
+  SDL_FRect r = {0.0F, (float)(row * LED_H), (float)LED_W, (float)LED_H};
   return r;
 }
 
 SDL_FRect assets_button_rect(int face) {
-  SDL_FRect r = {0.0F, (float)(face * BUTTON_PX), (float)BUTTON_PX,
+  int row = (BTN_COUNT - 1) - face;
+  SDL_FRect r = {0.0F, (float)(row * BUTTON_PX), (float)BUTTON_PX,
                  (float)BUTTON_PX};
   return r;
 }
