@@ -28,8 +28,19 @@ static SDL_Texture *assets_load_sheet(SDL_Renderer *renderer, const char *dir,
     return NULL;
   }
 
-  SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, surf);
+  /* The original sheets are palettized (INDEX4/INDEX1). SDL3 does NOT auto-
+   * convert indexed surfaces when creating a texture; the resulting indexed
+   * texture is unrenderable ("Texture doesn't have a palette"). Convert to a
+   * packed RGBA format first so the texture renders on every backend. */
+  SDL_Surface *rgba = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_RGBA32);
   SDL_DestroySurface(surf);
+  if (rgba == NULL) {
+    printf("assets: SDL_ConvertSurface(%s) failed: %s\n", path, SDL_GetError());
+    return NULL;
+  }
+
+  SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, rgba);
+  SDL_DestroySurface(rgba);
   if (tex == NULL) {
     printf("assets: SDL_CreateTextureFromSurface(%s) failed: %s\n", path,
            SDL_GetError());
