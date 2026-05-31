@@ -457,3 +457,25 @@ SDL build-dep provisioning fails.
 - **Orthodoxy**: confirmed installed (Clang-22 plugin); configure with `-DCMAKE_CXX_COMPILER=clang++-22`.
 
 No open questions remain.
+
+## Amendments
+
+### 2026-05-24 — Stream-A contract amendments (smell-fix refactor, authorized)
+
+A Fowler/Beck smell audit prompted three behavior-preserving refactors that edit
+otherwise-frozen Stream-A contract headers (authorized by the user):
+
+- **`game.h`** — added `Board.rng_state`. The fallback RNG state moved off a
+  function-local `static` onto the board (reentrant, reproducible). A file-local
+  `g_seed_source` in `game.cc` is advanced once per `game_reset` so successive
+  games still get distinct layouts.
+- **`app.h`** — folded the transient per-window input flags (`left_down`,
+  `right_down`, `chorded`, `want_quit`, `menu_bar_h`, `pause_started_ms`) into
+  `AppState`, replacing `app.cc` file-statics.
+- **`render.h`** — `render_frame` now takes a `struct FrameView` (button face,
+  held cell, timer) instead of four scalar params plus an unused `Settings*`;
+  its body was split into `render_chrome`/`render_leds`/`render_button`/
+  `render_grid`.
+
+Also: `game.cc` gained a `game_neighbors` helper that replaced four copies of the
+8-neighbour iteration loop.
