@@ -7,7 +7,7 @@ include(FetchContent)
 FetchContent_Declare(
   SDL3
   GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-  GIT_TAG release-3.4.8
+  GIT_TAG d9d5536704d585616d4db3c8ba3c4ff6fc2757e1  # release-3.4.8
   GIT_SHALLOW TRUE
   SYSTEM
 )
@@ -24,7 +24,7 @@ FetchContent_MakeAvailable(SDL3)
 FetchContent_Declare(
   SDL3_mixer
   GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
-  GIT_TAG release-3.2.2
+  GIT_TAG a5e1890afc5115ffd16cefdbb4d50f74bf4970ce  # release-3.2.2
   GIT_SHALLOW TRUE
   SYSTEM
 )
@@ -57,7 +57,7 @@ FetchContent_MakeAvailable(SDL3_mixer)
 FetchContent_Declare(
   imgui
   GIT_REPOSITORY https://github.com/ocornut/imgui.git
-  GIT_TAG v1.92.8
+  GIT_TAG 8936b58fe26e8c3da834b8f60b06511d537b4c63  # v1.92.8
   GIT_SHALLOW TRUE
   SYSTEM
 )
@@ -83,7 +83,7 @@ target_link_libraries(imgui PUBLIC SDL3::SDL3)
 FetchContent_Declare(
   mini
   GIT_REPOSITORY https://github.com/metayeti/mINI.git
-  GIT_TAG 0.9.18
+  GIT_TAG 52b66e987cb56171dc91d96115cdf094b6e4d7a0  # 0.9.18
   GIT_SHALLOW TRUE
   SYSTEM
 )
@@ -99,7 +99,7 @@ if(BUILD_TESTS)
   FetchContent_Declare(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.17.0
+    GIT_TAG 52eb8108c5bdec04579160ae17225d66034bd723  # v1.17.0
     GIT_SHALLOW TRUE
     SYSTEM
   )
