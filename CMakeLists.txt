@@ -23,12 +23,17 @@ if(ENABLE_LTO)
   endif()
 endif()
 
-# Sanitizers
+# Sanitizers — carried by an INTERFACE target that src/ links PUBLIC into the
+# project library, so only code we own (lib + executable + tests) is instrumented.
+# The FetchContent dependencies never link this target, so they stay un-instrumented.
+add_library(minesweeper_sanitizers INTERFACE)
 if(ENABLE_SANITIZERS)
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address,undefined)
-    message(STATUS "Sanitizers enabled")
+    target_compile_options(minesweeper_sanitizers INTERFACE
+      -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(minesweeper_sanitizers INTERFACE
+      -fsanitize=address,undefined)
+    message(STATUS "Sanitizers enabled (project targets only)")
   endif()
 endif()
 

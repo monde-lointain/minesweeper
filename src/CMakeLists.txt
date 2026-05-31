@@ -19,10 +19,13 @@ target_link_libraries(minesweeper_lib PUBLIC
   SDL3_mixer::SDL3_mixer
   imgui
   mini
+  minesweeper_sanitizers  # PUBLIC: propagates -fsanitize to exe + tests, not deps
 )
 
-# Warnings on our code only (deps are SYSTEM / separate targets).
-set(MINESWEEPER_WARNINGS -Wall -Wextra -Wpedantic -Werror)
+# Warnings on our code only (deps are SYSTEM / separate targets). Warnings-as-
+# errors is applied below via the COMPILE_WARNING_AS_ERROR property, not a raw
+# -Werror flag, so it never reaches dependency targets.
+set(MINESWEEPER_WARNINGS -Wall -Wextra -Wpedantic)
 target_compile_options(minesweeper_lib PRIVATE ${MINESWEEPER_WARNINGS})
 
 # Executable.
@@ -31,6 +34,10 @@ add_executable(minesweeper
 )
 target_compile_options(minesweeper PRIVATE ${MINESWEEPER_WARNINGS})
 target_link_libraries(minesweeper PRIVATE minesweeper_lib)
+
+# Warnings are errors for our targets only (always on; never dependencies).
+set_target_properties(minesweeper_lib minesweeper
+  PROPERTIES COMPILE_WARNING_AS_ERROR ON)
 
 # Orthodox C++ enforcement: project targets only (never deps, never tests).
 if(orthodoxy_plugin_FOUND)
