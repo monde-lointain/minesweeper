@@ -3,6 +3,10 @@
  *
  * AppState is the whole runtime. main.cc defines the SDL_MAIN_USE_CALLBACKS
  * entry points and delegates to these helpers (implemented in app.cc).
+ *
+ * Post-Stream-A amendment (authorized; see docs/2026-05-23-minesweeper-port-
+ * design.md): folded the transient input flags (left/right/chord/quit, menu-bar
+ * height, pause tick) into AppState instead of app.cc file-statics.
  */
 #ifndef MINESWEEPER_APP_H
 #define MINESWEEPER_APP_H
@@ -34,6 +38,14 @@ struct AppState {
   uint64_t timer_start_ms;
   int elapsed_sec;
   bool paused; /* minimized / unfocused */
+
+  /* Transient input state (single window). */
+  bool left_down;
+  bool right_down;
+  bool chorded; /* a chord fired; suppress the partner button's action */
+  bool want_quit;
+  int menu_bar_h;            /* last ImGui main-menu-bar height in px */
+  uint64_t pause_started_ms; /* tick when pause began */
 
   int pending_name_level; /* level awaiting Enter-Name, -1 if none */
   bool show_custom;

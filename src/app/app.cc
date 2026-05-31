@@ -18,14 +18,6 @@
 #include "minesweeper/audio.h"
 #include "minesweeper/config.h"
 
-/* ---- transient input state (single window) ----------------------------- */
-static bool g_left_down;
-static bool g_right_down;
-static bool g_chorded; /* a chord fired; suppress the partner button's action */
-static bool g_want_quit;
-static int g_menu_bar_h; /* last ImGui main-menu-bar height in px */
-static uint64_t g_pause_started_ms;
-
 /* ---- difficulty geometry ----------------------------------------------- */
 static void app_dims(const struct Settings *s, int *w, int *h, int *mines) {
   switch (s->difficulty) {
@@ -54,7 +46,7 @@ static void app_dims(const struct Settings *s, int *w, int *h, int *mines) {
 }
 
 static void app_compute_layout(struct AppState *s, struct Layout *lay) {
-  int mbh = s->settings.menu_visible ? g_menu_bar_h : 0;
+  int mbh = s->settings.menu_visible ? s->menu_bar_h : 0;
   render_compute_layout(&s->board, &s->settings, mbh, lay);
 }
 
@@ -85,9 +77,9 @@ static void app_new_game(struct AppState *s) {
   s->timer_running = false;
   s->elapsed_sec = 0;
   s->paused = false;
-  g_left_down = false;
-  g_right_down = false;
-  g_chorded = false;
+  s->left_down = false;
+  s->right_down = false;
+  s->chorded = false;
   app_resize(s);
 }
 
@@ -234,14 +226,14 @@ static void app_mouse_down(struct AppState *s, const SDL_Event *e) {
   on_cell = render_cell_at(&s->board, &lay, e->button.x, e->button.y, &cx, &cy);
 
   if (e->button.button == SDL_BUTTON_LEFT) {
-    g_left_down = true;
+    s->left_down = true;
     if (render_button_at(&lay, e->button.x, e->button.y)) {
       s->pressing_face = true;
       s->button_face = BTN_DOWN;
       return;
     }
   } else if (e->button.button == SDL_BUTTON_RIGHT) {
-    g_right_down = true;
+    s->right_down = true;
   }
 
   if (!app_playable(s)) {
@@ -249,7 +241,7 @@ static void app_mouse_down(struct AppState *s, const SDL_Event *e) {
   }
 
   /* Both buttons (or middle) -> chord intent. */
-  if ((g_left_down && g_right_down) || e->button.button == SDL_BUTTON_MIDDLE) {
+  if ((s->left_down && s->right_down) || e->button.button == SDL_BUTTON_MIDDLE) {
     s->chord_active = true;
     if (on_cell) {
       s->press_x = cx;
@@ -286,7 +278,7 @@ static void app_mouse_up(struct AppState *s, const SDL_Event *e) {
     } else {
       s->button_face = BTN_HAPPY;
     }
-    g_left_down = false;
+    s->left_down = false;
     return;
   }
 
@@ -297,11 +289,11 @@ static void app_mouse_up(struct AppState *s, const SDL_Event *e) {
       app_after_action(s, result);
     }
     s->chord_active = false;
-    g_chorded = true;
+    s->chorded = true;
     s->press_x = -1;
     s->press_y = -1;
   } else if (e->button.button == SDL_BUTTON_LEFT && s->pressing_board) {
-    if (on_cell && app_playable(s) && !g_chorded) {
+    if (on_cell && app_playable(s) && !s->chorded) {
       result = game_reveal(&s->board, cx, cy);
       app_start_timer(s);
       app_after_action(s, result);
@@ -312,12 +304,12 @@ static void app_mouse_up(struct AppState *s, const SDL_Event *e) {
   }
 
   if (e->button.button == SDL_BUTTON_LEFT) {
-    g_left_down = false;
+    s->left_down = false;
   } else if (e->button.button == SDL_BUTTON_RIGHT) {
-    g_right_down = false;
+    s->right_down = false;
   }
-  if (!g_left_down && !g_right_down) {
-    g_chorded = false;
+  if (!s->left_down && !s->right_down) {
+    s->chorded = false;
   }
   if (s->button_face == BTN_CAUTION && app_playable(s)) {
     s->button_face = BTN_HAPPY;
@@ -329,9 +321,9 @@ static void app_set_paused(struct AppState *s, bool paused) {
     return;
   }
   if (paused) {
-    g_pause_started_ms = SDL_GetTicks();
+    s->pause_started_ms = SDL_GetTicks();
   } else if (s->timer_running) {
-    s->timer_start_ms += SDL_GetTicks() - g_pause_started_ms;
+    s->timer_start_ms += SDL_GetTicks() - s->pause_started_ms;
   }
   s->paused = paused;
 }
@@ -388,7 +380,7 @@ SDL_AppResult app_event(struct AppState *s, SDL_Event *event) {
 /* ---- per-frame actions ------------------------------------------------- */
 static void app_apply_actions(struct AppState *s, const struct UiActions *a) {
   if (a->quit) {
-    g_want_quit = true;
+    s->want_quit = true;
   }
   if (a->new_game) {
     app_new_game(s);
@@ -470,7 +462,7 @@ SDL_AppResult app_iterate(struct AppState *s) {
 
   ui_actions_clear(&actions);
   menu_h = ui_menu_bar(&s->settings, &actions);
-  g_menu_bar_h = (int)menu_h;
+  s->menu_bar_h = (int)menu_h;
   ui_dialogs(&s->settings, &actions, &s->show_custom, &s->show_best,
              &s->show_about, &s->show_name, s->pending_name_level);
   app_apply_actions(s, &actions);
@@ -493,13 +485,17 @@ SDL_AppResult app_iterate(struct AppState *s) {
   /* Draw: board+chrome, then ImGui on top. */
   SDL_SetRenderDrawColor(s->renderer, 192, 192, 192, 255);
   SDL_RenderClear(s->renderer);
-  render_frame(s->renderer, &s->assets, &s->board, &s->settings, &lay,
-               s->button_face, s->press_x, s->press_y, s->elapsed_sec);
+  struct FrameView view;
+  view.button_face = s->button_face;
+  view.press_x = s->press_x;
+  view.press_y = s->press_y;
+  view.elapsed_sec = s->elapsed_sec;
+  render_frame(s->renderer, &s->assets, &s->board, &lay, &view);
   ImGui::Render();
   ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), s->renderer);
   SDL_RenderPresent(s->renderer);
 
-  return g_want_quit ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
+  return s->want_quit ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 
 void app_quit(struct AppState *s) {
