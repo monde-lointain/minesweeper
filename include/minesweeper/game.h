@@ -2,6 +2,9 @@
  *
  * Mirrors winmine rtns.c semantics. FROZEN CONTRACT (Stream A).
  * See ~/development/projects/c/winmine/rtns.c for reference behavior.
+ *
+ * Post-Stream-A amendment (authorized; see docs/2026-05-23-minesweeper-port-
+ * design.md): added Board.rng_state so the fallback RNG is board-local.
  */
 #ifndef MINESWEEPER_GAME_H
 #define MINESWEEPER_GAME_H
@@ -49,6 +52,7 @@ struct Board {
   struct Cell cells[BOARD_MAX_CELLS];
   RngFn rng;
   void *rng_ctx;
+  uint32_t rng_state; /* fallback LCG state; board-local, reentrant */
 };
 
 /* Index helper: row-major, width-strided. Callers stay in [0,width)x[0,height).

@@ -103,6 +103,21 @@ TEST(Placement, ScriptedRngHonoredAndSkipsAvoided) {
   EXPECT_EQ(mine_count(b), 3);
 }
 
+TEST(Placement, FallbackVariesAcrossGames) {
+  /* Two back-to-back fallback-RNG games must NOT produce identical layouts
+   * (guards the per-reset seed source; a constant reseed would fail this). */
+  Board a;
+  Board b;
+  game_reset(&a, 16, 16, 40, nullptr, nullptr);
+  game_reset(&b, 16, 16, 40, nullptr, nullptr);
+  game_place_mines(&a, 0, 0);
+  game_place_mines(&b, 0, 0);
+  int diff = 0;
+  for (int i = 0; i < 16 * 16; ++i)
+    if (a.cells[i].mine != b.cells[i].mine) ++diff;
+  EXPECT_GT(diff, 0) << "successive games produced identical mine layouts";
+}
+
 TEST(Placement, AdjacencyCountsCorrect) {
   Board b;
   ScriptRng s;

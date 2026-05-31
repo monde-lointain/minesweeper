@@ -9,12 +9,11 @@
 
 /* Deterministic fallback when no RNG is injected. A stateful LCG advanced on
  * every draw so successive calls differ — never loops, never crashes. The
- * header is frozen (no seed field on Board), so the state is a function-local
- * static. Determinism is per-process, which is all the contract requires. */
-static uint32_t game_fallback_rng(uint32_t n) {
-  static uint32_t state = 0x12345678u;
-  state = state * 1664525u + 1013904223u;
-  return (state >> 8) % n;
+ * state lives on the Board (b->rng_state), so the draw is reentrant and a given
+ * board is reproducible from its state. */
+static uint32_t game_fallback_rng(struct Board *b, uint32_t n) {
+  b->rng_state = b->rng_state * 1664525u + 1013904223u;
+  return (b->rng_state >> 8) % n;
 }
 
 static uint32_t game_rand(struct Board *b, uint32_t n) {
@@ -24,8 +23,14 @@ static uint32_t game_rand(struct Board *b, uint32_t n) {
   if (b->rng != NULL) {
     return b->rng(b->rng_ctx, n) % n;
   }
-  return game_fallback_rng(n);
+  return game_fallback_rng(b, n);
 }
+
+/* Per-process seed source, advanced once per game_reset so successive games get
+ * a distinct fallback layout. WARNING: process-global — never write a test that
+ * asserts an exact FALLBACK layout; it would be order-dependent under gtest
+ * shuffle. Tests needing a fixed layout must inject `rng` (scripted). */
+static uint32_t g_seed_source = 0x12345678u;
 
 static int game_count_adjacent_mines(const struct Board *b, int x, int y) {
   int count = 0;
@@ -59,6 +64,8 @@ void game_reset(struct Board *b, int w, int h, int mines, RngFn rng,
   b->mines_placed = false;
   b->rng = rng;
   b->rng_ctx = rng_ctx;
+  g_seed_source = g_seed_source * 1664525u + 1013904223u;
+  b->rng_state = g_seed_source;
 }
 
 void game_place_mines(struct Board *b, int avoid_x, int avoid_y) {
