@@ -1,0 +1,72 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 28, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "clang-22",
+      "hidden": true,
+      "inherits": "base",
+      "description": "Base every primary variant inherits; clang++-22 so the Orthodoxy plugin engages. NOTE: binaryDir build/ is shared with the Makefile - use one front-end per tree (make distclean when switching).",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang-22",
+        "CMAKE_CXX_COMPILER": "clang++-22"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "clang-22 Debug",
+      "inherits": "clang-22",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "release",
+      "displayName": "clang-22 Release",
+      "inherits": "clang-22",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "asan",
+      "displayName": "clang-22 Debug + sanitizers",
+      "inherits": "debug",
+      "cacheVariables": { "ENABLE_SANITIZERS": "ON" }
+    },
+    {
+      "name": "gcc",
+      "displayName": "GCC Debug (escape hatch; no Orthodoxy plugin)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "cc",
+      "displayName": "System default compiler, Debug (escape hatch)",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "debug", "configurePreset": "debug" },
+    { "name": "release", "configurePreset": "release" },
+    { "name": "asan", "configurePreset": "asan" },
+    { "name": "gcc", "configurePreset": "gcc" },
+    { "name": "cc", "configurePreset": "cc" }
+  ],
+  "testPresets": [
+    { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },
+    { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } },
+    { "name": "asan", "configurePreset": "asan", "output": { "outputOnFailure": true } },
+    { "name": "gcc", "configurePreset": "gcc", "output": { "outputOnFailure": true } },
+    { "name": "cc", "configurePreset": "cc", "output": { "outputOnFailure": true } }
+  ]
+}
