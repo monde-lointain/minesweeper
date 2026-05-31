@@ -32,8 +32,13 @@ static uint32_t game_rand(struct Board *b, uint32_t n) {
  * shuffle. Tests needing a fixed layout must inject `rng` (scripted). */
 static uint32_t g_seed_source = 0x12345678u;
 
-static int game_count_adjacent_mines(const struct Board *b, int x, int y) {
-  int count = 0;
+static bool game_in_range(const struct Board *b, int x, int y) {
+  return x >= 0 && y >= 0 && x < b->width && y < b->height;
+}
+
+/* Fill `out` with the in-range 8-neighbours of (x,y); returns the count. */
+static int game_neighbors(const struct Board *b, int x, int y, int out[8][2]) {
+  int n = 0;
   for (int dy = -1; dy <= 1; ++dy) {
     for (int dx = -1; dx <= 1; ++dx) {
       if (dx == 0 && dy == 0) {
@@ -41,12 +46,24 @@ static int game_count_adjacent_mines(const struct Board *b, int x, int y) {
       }
       int nx = x + dx;
       int ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= b->width || ny >= b->height) {
+      if (!game_in_range(b, nx, ny)) {
         continue;
       }
-      if (b->cells[game_index(b, nx, ny)].mine) {
-        ++count;
-      }
+      out[n][0] = nx;
+      out[n][1] = ny;
+      ++n;
+    }
+  }
+  return n;
+}
+
+static int game_count_adjacent_mines(const struct Board *b, int x, int y) {
+  int nb[8][2];
+  int n = game_neighbors(b, x, y, nb);
+  int count = 0;
+  for (int i = 0; i < n; ++i) {
+    if (b->cells[game_index(b, nb[i][0], nb[i][1])].mine) {
+      ++count;
     }
   }
   return count;
@@ -106,10 +123,6 @@ void game_place_mines(struct Board *b, int avoid_x, int avoid_y) {
   b->mines_placed = true;
 }
 
-static bool game_in_range(const struct Board *b, int x, int y) {
-  return x >= 0 && y >= 0 && x < b->width && y < b->height;
-}
-
 /* Reveal a single covered, non-flagged cell. Returns the count of newly
  * revealed cells (0 if it was a no-op). Mines are revealed too (caller checks
  * for loss). Fills queue with newly revealed zero-adjacent cells for flood. */
@@ -151,22 +164,19 @@ static void game_flood(struct Board *b, int x, int y) {
     int cx = qx[head];
     int cy = qy[head];
     ++head;
-    for (int dy = -1; dy <= 1; ++dy) {
-      for (int dx = -1; dx <= 1; ++dx) {
-        if (dx == 0 && dy == 0) {
-          continue;
-        }
-        int nx = cx + dx;
-        int ny = cy + dy;
-        if (game_step_one(b, nx, ny) == 0) {
-          continue;
-        }
-        int nidx = game_index(b, nx, ny);
-        if (b->cells[nidx].adjacent == 0 && !b->cells[nidx].mine) {
-          qx[tail] = nx;
-          qy[tail] = ny;
-          ++tail;
-        }
+    int nb[8][2];
+    int n = game_neighbors(b, cx, cy, nb);
+    for (int i = 0; i < n; ++i) {
+      int nx = nb[i][0];
+      int ny = nb[i][1];
+      if (game_step_one(b, nx, ny) == 0) {
+        continue;
+      }
+      int nidx = game_index(b, nx, ny);
+      if (b->cells[nidx].adjacent == 0 && !b->cells[nidx].mine) {
+        qx[tail] = nx;
+        qy[tail] = ny;
+        ++tail;
       }
     }
   }
@@ -226,20 +236,12 @@ int game_reveal(struct Board *b, int x, int y) {
 }
 
 static int game_count_flag_mine(const struct Board *b, int x, int y) {
+  int nb[8][2];
+  int n = game_neighbors(b, x, y, nb);
   int count = 0;
-  for (int dy = -1; dy <= 1; ++dy) {
-    for (int dx = -1; dx <= 1; ++dx) {
-      if (dx == 0 && dy == 0) {
-        continue;
-      }
-      int nx = x + dx;
-      int ny = y + dy;
-      if (!game_in_range(b, nx, ny)) {
-        continue;
-      }
-      if (b->cells[game_index(b, nx, ny)].flag == FLAG_MINE) {
-        ++count;
-      }
+  for (int i = 0; i < n; ++i) {
+    if (b->cells[game_index(b, nb[i][0], nb[i][1])].flag == FLAG_MINE) {
+      ++count;
     }
   }
   return count;
@@ -264,30 +266,24 @@ int game_chord(struct Board *b, int x, int y) {
   bool hit_mine = false;
   bool revealed_any = false;
 
-  for (int dy = -1; dy <= 1; ++dy) {
-    for (int dx = -1; dx <= 1; ++dx) {
-      if (dx == 0 && dy == 0) {
-        continue;
-      }
-      int nx = x + dx;
-      int ny = y + dy;
-      if (!game_in_range(b, nx, ny)) {
-        continue;
-      }
-      int nidx = game_index(b, nx, ny);
-      struct Cell *nc = &b->cells[nidx];
-      if (nc->flag == FLAG_MINE || nc->revealed) {
-        continue;
-      }
-      if (nc->mine) {
-        /* wrong flag elsewhere -> detonate this mine */
-        nc->revealed = true;
-        nc->exploded = true;
-        hit_mine = true;
-      } else {
-        game_flood(b, nx, ny);
-        revealed_any = true;
-      }
+  int nb[8][2];
+  int n = game_neighbors(b, x, y, nb);
+  for (int i = 0; i < n; ++i) {
+    int nx = nb[i][0];
+    int ny = nb[i][1];
+    int nidx = game_index(b, nx, ny);
+    struct Cell *nc = &b->cells[nidx];
+    if (nc->flag == FLAG_MINE || nc->revealed) {
+      continue;
+    }
+    if (nc->mine) {
+      /* wrong flag elsewhere -> detonate this mine */
+      nc->revealed = true;
+      nc->exploded = true;
+      hit_mine = true;
+    } else {
+      game_flood(b, nx, ny);
+      revealed_any = true;
     }
   }
 
