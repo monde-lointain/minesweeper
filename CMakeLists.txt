@@ -5,8 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Build options
-option(BUILD_TESTS "Build unit tests" ON)
+# Build options. Tests default on only when we are the top-level project, so an
+# embedding parent (add_subdirectory / FetchContent) does not build them.
+option(BUILD_TESTS "Build unit tests" ${PROJECT_IS_TOP_LEVEL})
 option(ENABLE_LTO "Enable Link-Time Optimization for Release builds" OFF)
 option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 
