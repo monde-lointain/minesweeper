@@ -204,24 +204,16 @@ static int cell_sprite(const struct Board *b, int x, int y, int press_x,
   return SPR_BLANK_UP;
 }
 
-void render_frame(SDL_Renderer *renderer, const struct Assets *a,
-                  const struct Board *b, const struct Settings *s,
-                  const struct Layout *lay, int button_face, int press_x,
-                  int press_y, int elapsed_sec) {
+/* Win95 chrome: face fill + the nested raised/recessed bevels. `gw`/`gh` are the
+ * grid's pixel dimensions. */
+static void render_chrome(SDL_Renderer *renderer, const struct Layout *lay,
+                          int gw, int gh) {
   int scale = lay->scale;
   int top = lay->menu_bar_h;
-  int x;
-  int y;
-  int cell = BLOCK_PX * scale;
   int led_w = LED_W * scale;
   int led_h = LED_H * scale;
   int btn = BUTTON_PX * scale;
-  int gw = b->width * cell;  /* grid pixel width */
-  int gh = b->height * cell; /* grid pixel height */
 
-  (void)s;
-
-  /* 1. Win95 chrome. ----------------------------------------------------- */
   /* Background face fill (over the whole board content area below the menu). */
   set_color(renderer, FACE_R);
   fill(renderer, 0, top, lay->window_w, lay->window_h - top);
@@ -258,42 +250,65 @@ void render_frame(SDL_Renderer *renderer, const struct Assets *a,
   /* Raised 1px bevel around the smiley button. */
   draw_bevel(renderer, lay->button_x - scale, lay->button_y - scale,
              btn + 2 * scale, btn + 2 * scale, 1, scale, true);
+}
 
-  /* 2. Bomb-count LED (left). ------------------------------------------- */
+/* Bomb-count LED (left, mines remaining) and time LED (right, clamped). */
+static void render_leds(SDL_Renderer *renderer, const struct Assets *a,
+                        const struct Board *b, const struct Layout *lay,
+                        int elapsed_sec) {
+  int scale = lay->scale;
+  int t = elapsed_sec;
+
   draw_led3(renderer, a->led, lay->bomb_led_x, lay->led_y, scale,
             game_mines_remaining(b));
 
-  /* 3. Time LED (right). ------------------------------------------------- */
-  {
-    int t = elapsed_sec;
-    if (t < 0) {
-      t = 0;
-    }
-    if (t > 999) {
-      t = 999;
-    }
-    draw_led3(renderer, a->led, lay->time_led_x, lay->led_y, scale, t);
+  if (t < 0) {
+    t = 0;
   }
-
-  /* 4. Smiley button. ---------------------------------------------------- */
-  {
-    int face = button_face;
-    if (face < 0 || face >= BTN_COUNT) {
-      face = BTN_HAPPY;
-    }
-    blit(renderer, a->button, assets_button_rect(face), lay->button_x,
-         lay->button_y, btn, btn);
+  if (t > 999) {
+    t = 999;
   }
+  draw_led3(renderer, a->led, lay->time_led_x, lay->led_y, scale, t);
+}
 
-  /* 5. Grid cells. ------------------------------------------------------- */
-  for (y = 0; y < b->height; ++y) {
-    for (x = 0; x < b->width; ++x) {
-      int spr = cell_sprite(b, x, y, press_x, press_y);
+/* Smiley button (face clamped to a valid sprite). */
+static void render_button(SDL_Renderer *renderer, const struct Assets *a,
+                          const struct Layout *lay, int button_face) {
+  int btn = BUTTON_PX * lay->scale;
+  int face = button_face;
+  if (face < 0 || face >= BTN_COUNT) {
+    face = BTN_HAPPY;
+  }
+  blit(renderer, a->button, assets_button_rect(face), lay->button_x,
+       lay->button_y, btn, btn);
+}
+
+/* Grid cells, one sprite blit each. */
+static void render_grid(SDL_Renderer *renderer, const struct Assets *a,
+                        const struct Board *b, const struct Layout *lay,
+                        const struct FrameView *view) {
+  int cell = BLOCK_PX * lay->scale;
+  for (int y = 0; y < b->height; ++y) {
+    for (int x = 0; x < b->width; ++x) {
+      int spr = cell_sprite(b, x, y, view->press_x, view->press_y);
       int dx = lay->grid_x + x * cell;
       int dy = lay->grid_y + y * cell;
       blit(renderer, a->blocks, assets_block_rect(spr), dx, dy, cell, cell);
     }
   }
+}
+
+void render_frame(SDL_Renderer *renderer, const struct Assets *a,
+                  const struct Board *b, const struct Layout *lay,
+                  const struct FrameView *view) {
+  int cell = BLOCK_PX * lay->scale;
+  int gw = b->width * cell;  /* grid pixel width */
+  int gh = b->height * cell; /* grid pixel height */
+
+  render_chrome(renderer, lay, gw, gh);
+  render_leds(renderer, a, b, lay, view->elapsed_sec);
+  render_button(renderer, a, lay, view->button_face);
+  render_grid(renderer, a, b, lay, view);
 }
 
 bool render_cell_at(const struct Board *b, const struct Layout *lay, float px,

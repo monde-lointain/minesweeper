@@ -5,6 +5,10 @@
  * face 192/highlight 255/shadow 128/dark 0. Board interior is sprite blits;
  * only outer frame + LED panel bevels are hand-drawn. See
  * ~/.../winmine/grafix.{c,h}.
+ *
+ * Post-Stream-A amendment (authorized; see docs/2026-05-23-minesweeper-port-
+ * design.md): render_frame now takes a struct FrameView (button face / held
+ * cell / timer) instead of 4 scalars + an unused Settings*.
  */
 #ifndef MINESWEEPER_RENDER_H
 #define MINESWEEPER_RENDER_H
@@ -36,13 +40,20 @@ struct Layout {
 void render_compute_layout(const struct Board *b, const struct Settings *s,
                            int menu_bar_h, struct Layout *out);
 
+/* Per-frame view state driving the chrome (everything not in Board/Layout). */
+struct FrameView {
+  int button_face; /* enum ButtonSprite */
+  int press_x;     /* currently held cell, -1 if none */
+  int press_y;
+  int elapsed_sec; /* timer seconds shown in the right LED */
+};
+
 /* Draw one frame of board + chrome (call before ImGui render, after clear).
- * `button_face` is enum ButtonSprite. `press_x/press_y` is the currently held
- * cell (-1,-1 if none). `elapsed_sec` and mines-remaining drive the LEDs. */
+ * `view` carries the smiley face, held cell, and timer; mines-remaining is read
+ * from the Board. */
 void render_frame(SDL_Renderer *renderer, const struct Assets *a,
-                  const struct Board *b, const struct Settings *s,
-                  const struct Layout *lay, int button_face, int press_x,
-                  int press_y, int elapsed_sec);
+                  const struct Board *b, const struct Layout *lay,
+                  const struct FrameView *view);
 
 /* Map a window pixel to a cell. Returns false if outside the grid. */
 bool render_cell_at(const struct Board *b, const struct Layout *lay, float px,

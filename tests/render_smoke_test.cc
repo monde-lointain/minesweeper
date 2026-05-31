@@ -130,7 +130,8 @@ TEST(RenderSmoke, SpritesActuallyPaint) {
 
   SDL_SetRenderDrawColor(ren, 192, 192, 192, 255);
   SDL_RenderClear(ren);
-  render_frame(ren, &a, &b, &s, &lay, BTN_HAPPY, -1, -1, 0);
+  FrameView view = {BTN_HAPPY, -1, -1, 0};
+  render_frame(ren, &a, &b, &lay, &view);
 
   SDL_Surface *surf = SDL_RenderReadPixels(ren, nullptr);
   ASSERT_NE(surf, nullptr) << SDL_GetError();
