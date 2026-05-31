@@ -37,11 +37,11 @@ enum {
   DK = 0    /* dark */
 };
 
-static void set_color(SDL_Renderer *r, int c) {
+static void set_color(SDL_Renderer* r, int c) {
   SDL_SetRenderDrawColor(r, (Uint8)c, (Uint8)c, (Uint8)c, 255);
 }
 
-static void fill(SDL_Renderer *r, int x, int y, int w, int h) {
+static void fill(SDL_Renderer* r, int x, int y, int w, int h) {
   SDL_FRect rc;
   rc.x = (float)x;
   rc.y = (float)y;
@@ -53,7 +53,7 @@ static void fill(SDL_Renderer *r, int x, int y, int w, int h) {
 /* Beveled border of `width` px around the rect (x,y,w,h), in scaled pixels.
  * `raised` true -> highlight top/left, shadow bottom/right (raised look).
  * raised false -> shadow top/left, highlight bottom/right (recessed look). */
-static void draw_bevel(SDL_Renderer *r, int x, int y, int w, int h, int width,
+static void draw_bevel(SDL_Renderer* r, int x, int y, int w, int h, int width,
                        int scale, bool raised) {
   int i;
   int tl = raised ? HI : SH;
@@ -73,8 +73,8 @@ static void draw_bevel(SDL_Renderer *r, int x, int y, int w, int h, int width,
   }
 }
 
-void render_compute_layout(const struct Board *b, const struct Settings *s,
-                           int menu_bar_h, struct Layout *out) {
+void render_compute_layout(const struct Board* b, const struct Settings* s,
+                           int menu_bar_h, struct Layout* out) {
   int scale;
   int win_w_u; /* unscaled client width  */
   int win_h_u; /* unscaled client height */
@@ -108,7 +108,7 @@ void render_compute_layout(const struct Board *b, const struct Settings *s,
 }
 
 /* Blit one scaled sprite. */
-static void blit(SDL_Renderer *r, SDL_Texture *tex, SDL_FRect src, int dx,
+static void blit(SDL_Renderer* r, SDL_Texture* tex, SDL_FRect src, int dx,
                  int dy, int dw, int dh) {
   SDL_FRect dst;
   dst.x = (float)dx;
@@ -120,7 +120,7 @@ static void blit(SDL_Renderer *r, SDL_Texture *tex, SDL_FRect src, int dx,
 
 /* Draw a 3-digit LED panel at left pixel x, top pixel y. `value` may be
  * negative: leftmost digit becomes LED_NEGATIVE, magnitude shown mod 100. */
-static void draw_led3(SDL_Renderer *r, SDL_Texture *tex, int x, int y,
+static void draw_led3(SDL_Renderer* r, SDL_Texture* tex, int x, int y,
                       int scale, int value) {
   int d0; /* leftmost (hundreds / sign) */
   int d1;
@@ -149,10 +149,10 @@ static void draw_led3(SDL_Renderer *r, SDL_Texture *tex, int x, int y,
 }
 
 /* Choose the sprite index for one cell given the game state. */
-static int cell_sprite(const struct Board *b, int x, int y, int press_x,
+static int cell_sprite(const struct Board* b, int x, int y, int press_x,
                        int press_y) {
   int idx = game_index(b, x, y);
-  const struct Cell *c = &b->cells[idx];
+  const struct Cell* c = &b->cells[idx];
   bool lost = (b->status == GAME_LOST);
   bool won = (b->status == GAME_WON);
 
@@ -204,9 +204,9 @@ static int cell_sprite(const struct Board *b, int x, int y, int press_x,
   return SPR_BLANK_UP;
 }
 
-/* Win95 chrome: face fill + the nested raised/recessed bevels. `gw`/`gh` are the
- * grid's pixel dimensions. */
-static void render_chrome(SDL_Renderer *renderer, const struct Layout *lay,
+/* Win95 chrome: face fill + the nested raised/recessed bevels. `gw`/`gh` are
+ * the grid's pixel dimensions. */
+static void render_chrome(SDL_Renderer* renderer, const struct Layout* lay,
                           int gw, int gh) {
   int scale = lay->scale;
   int top = lay->menu_bar_h;
@@ -253,8 +253,8 @@ static void render_chrome(SDL_Renderer *renderer, const struct Layout *lay,
 }
 
 /* Bomb-count LED (left, mines remaining) and time LED (right, clamped). */
-static void render_leds(SDL_Renderer *renderer, const struct Assets *a,
-                        const struct Board *b, const struct Layout *lay,
+static void render_leds(SDL_Renderer* renderer, const struct Assets* a,
+                        const struct Board* b, const struct Layout* lay,
                         int elapsed_sec) {
   int scale = lay->scale;
   int t = elapsed_sec;
@@ -272,8 +272,8 @@ static void render_leds(SDL_Renderer *renderer, const struct Assets *a,
 }
 
 /* Smiley button (face clamped to a valid sprite). */
-static void render_button(SDL_Renderer *renderer, const struct Assets *a,
-                          const struct Layout *lay, int button_face) {
+static void render_button(SDL_Renderer* renderer, const struct Assets* a,
+                          const struct Layout* lay, int button_face) {
   int btn = BUTTON_PX * lay->scale;
   int face = button_face;
   if (face < 0 || face >= BTN_COUNT) {
@@ -284,9 +284,9 @@ static void render_button(SDL_Renderer *renderer, const struct Assets *a,
 }
 
 /* Grid cells, one sprite blit each. */
-static void render_grid(SDL_Renderer *renderer, const struct Assets *a,
-                        const struct Board *b, const struct Layout *lay,
-                        const struct FrameView *view) {
+static void render_grid(SDL_Renderer* renderer, const struct Assets* a,
+                        const struct Board* b, const struct Layout* lay,
+                        const struct FrameView* view) {
   int cell = BLOCK_PX * lay->scale;
   for (int y = 0; y < b->height; ++y) {
     for (int x = 0; x < b->width; ++x) {
@@ -298,9 +298,9 @@ static void render_grid(SDL_Renderer *renderer, const struct Assets *a,
   }
 }
 
-void render_frame(SDL_Renderer *renderer, const struct Assets *a,
-                  const struct Board *b, const struct Layout *lay,
-                  const struct FrameView *view) {
+void render_frame(SDL_Renderer* renderer, const struct Assets* a,
+                  const struct Board* b, const struct Layout* lay,
+                  const struct FrameView* view) {
   int cell = BLOCK_PX * lay->scale;
   int gw = b->width * cell;  /* grid pixel width */
   int gh = b->height * cell; /* grid pixel height */
@@ -311,8 +311,8 @@ void render_frame(SDL_Renderer *renderer, const struct Assets *a,
   render_grid(renderer, a, b, lay, view);
 }
 
-bool render_cell_at(const struct Board *b, const struct Layout *lay, float px,
-                    float py, int *cx, int *cy) {
+bool render_cell_at(const struct Board* b, const struct Layout* lay, float px,
+                    float py, int* cx, int* cy) {
   int cell = BLOCK_PX * lay->scale;
   float fx = px - (float)lay->grid_x;
   float fy = py - (float)lay->grid_y;
@@ -332,7 +332,7 @@ bool render_cell_at(const struct Board *b, const struct Layout *lay, float px,
   return true;
 }
 
-bool render_button_at(const struct Layout *lay, float px, float py) {
+bool render_button_at(const struct Layout* lay, float px, float py) {
   int btn = BUTTON_PX * lay->scale;
   float bx = (float)lay->button_x;
   float by = (float)lay->button_y;

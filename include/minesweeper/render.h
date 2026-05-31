@@ -37,8 +37,8 @@ struct Layout {
 
 /* Compute window size + element positions. `menu_bar_h` is the ImGui main-menu
  * bar height in pixels (0 when hidden). */
-void render_compute_layout(const struct Board *b, const struct Settings *s,
-                           int menu_bar_h, struct Layout *out);
+void render_compute_layout(const struct Board* b, const struct Settings* s,
+                           int menu_bar_h, struct Layout* out);
 
 /* Per-frame view state driving the chrome (everything not in Board/Layout). */
 struct FrameView {
@@ -51,15 +51,15 @@ struct FrameView {
 /* Draw one frame of board + chrome (call before ImGui render, after clear).
  * `view` carries the smiley face, held cell, and timer; mines-remaining is read
  * from the Board. */
-void render_frame(SDL_Renderer *renderer, const struct Assets *a,
-                  const struct Board *b, const struct Layout *lay,
-                  const struct FrameView *view);
+void render_frame(SDL_Renderer* renderer, const struct Assets* a,
+                  const struct Board* b, const struct Layout* lay,
+                  const struct FrameView* view);
 
 /* Map a window pixel to a cell. Returns false if outside the grid. */
-bool render_cell_at(const struct Board *b, const struct Layout *lay, float px,
-                    float py, int *cx, int *cy);
+bool render_cell_at(const struct Board* b, const struct Layout* lay, float px,
+                    float py, int* cx, int* cy);
 
 /* True if the pixel is within the smiley button rect. */
-bool render_button_at(const struct Layout *lay, float px, float py);
+bool render_button_at(const struct Layout* lay, float px, float py);
 
 #endif /* MINESWEEPER_RENDER_H */

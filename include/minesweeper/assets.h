@@ -49,24 +49,24 @@ enum ButtonSprite {
 enum { BLOCK_PX = 16, LED_W = 13, LED_H = 23, BUTTON_PX = 24 };
 
 struct Assets {
-  SDL_Texture *blocks; /* active set (color or B&W) */
-  SDL_Texture *led;
-  SDL_Texture *button;
-  SDL_Texture *blocks_color;
-  SDL_Texture *blocks_bw;
-  SDL_Texture *led_color;
-  SDL_Texture *led_bw;
-  SDL_Texture *button_color;
-  SDL_Texture *button_bw;
+  SDL_Texture* blocks; /* active set (color or B&W) */
+  SDL_Texture* led;
+  SDL_Texture* button;
+  SDL_Texture* blocks_color;
+  SDL_Texture* blocks_bw;
+  SDL_Texture* led_color;
+  SDL_Texture* led_bw;
+  SDL_Texture* button_color;
+  SDL_Texture* button_bw;
 };
 
 /* Load all sheets from `dir` (the assets/ directory beside the exe). Returns
  * false on failure (textures left null). */
-bool assets_load(struct Assets *a, SDL_Renderer *renderer, const char *dir);
-void assets_free(struct Assets *a);
+bool assets_load(struct Assets* a, SDL_Renderer* renderer, const char* dir);
+void assets_free(struct Assets* a);
 
 /* Point active textures at color or B&W set. */
-void assets_set_color(struct Assets *a, bool color);
+void assets_set_color(struct Assets* a, bool color);
 
 /* Source sub-rects within the active sheet for a given sprite index. */
 SDL_FRect assets_block_rect(int sprite); /* 0..SPR_BLOCK_COUNT-1 */
@@ -74,6 +74,6 @@ SDL_FRect assets_led_rect(int digit);    /* 0..LED_COUNT-1 */
 SDL_FRect assets_button_rect(int face);  /* 0..BTN_COUNT-1 */
 
 /* Best-effort window icon from winmine.ico in `dir`; ignored on failure. */
-void assets_set_window_icon(SDL_Window *window, const char *dir);
+void assets_set_window_icon(SDL_Window* window, const char* dir);
 
 #endif /* MINESWEEPER_ASSETS_H */

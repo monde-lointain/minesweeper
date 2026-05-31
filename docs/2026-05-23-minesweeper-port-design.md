@@ -479,3 +479,39 @@ otherwise-frozen Stream-A contract headers (authorized by the user):
 
 Also: `game.cc` gained a `game_neighbors` helper that replaced four copies of the
 8-neighbour iteration loop.
+
+### 2026-05-31 — Top-3 smell-fix refactor (authorized)
+
+A follow-up Fowler/Beck audit flagged hidden/global mutable state, shotgun
+surgery for settings, and a bloated `ui_dialogs`. Authorized refactors (all
+behavior-preserving; verified by the existing test suite + a clang++-22 +
+Orthodoxy build):
+
+- **Shared util TU** — new `include/minesweeper/util.h` + `src/util/util.cc`
+  holding `util_clamp` and `util_join_path`, replacing duplicated `clamp_int`/
+  `ui_clamp` and `assets_join_path`/`audio_join_path` (the join helper now
+  tolerates both `/` and `\\` everywhere). Added to the `minesweeper_lib`
+  source manifest in `src/CMakeLists.txt`.
+- **`game.h`** — `game_reset` now takes `const struct Rng *` (new POD bundling
+  `fn`/`ctx`/`seed`) instead of `(RngFn, void*)`. This **removes the
+  process-global `g_seed_source`** from `game.cc`: a NULL `Rng` means the
+  deterministic fallback (seed 0); the caller supplies entropy via `Rng.seed`
+  (`app_new_game` seeds from `SDL_GetTicks`). The `(rng, rng_ctx)` data clump
+  collapses into the one struct.
+- **`audio.h`** — mixer state moved off three `audio.cc` file-statics into a
+  caller-owned POD `struct Audio` (handles kept as `void*` so SDL_mixer types
+  stay confined to `audio.cc`, cast at use). All `audio_*` functions take the
+  `Audio*`; `AppState` owns one.
+- **`ui.h`** — `ui_dialogs` reduced from 7 params to 3 by introducing a POD
+  `struct DialogState` (dialog visibility + per-dialog edit buffers), replacing
+  the `ui.cc` function-statics and the four `show_*` bools in `AppState`. The
+  dead `level_for_name` param was dropped, and the 113-line body was split into
+  `ui_dialog_custom`/`_best`/`_about`/`_name`.
+- **`config.cc`** — `config_load`/`config_save` now iterate a single
+  `k_fields[]` descriptor table (section/key/type + `offsetof`) plus a scores
+  loop, so adding a setting is one table row instead of mirrored edits in both
+  directions. The `read_*` helpers share an `ini_get` guard. The POD `Settings`
+  contract (`types.h`) is unchanged.
+
+Note: the per-process `g_seed_source` described in the 2026-05-24 entry above is
+removed by this amendment; board randomness is now fully caller-supplied.

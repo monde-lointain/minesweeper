@@ -38,21 +38,38 @@ struct UiActions {
   char name[SCORE_NAME_MAX];
 };
 
+/* Modal-dialog state owned by the app (was ui.cc function-statics; see design
+ * doc amendment 2026-05-31). Holds each dialog's visibility plus the edit
+ * buffers that must persist across frames while a dialog is open. Zero-init is
+ * the closed/unseeded state. */
+struct DialogState {
+  bool show_custom;
+  bool show_best;
+  bool show_about;
+  bool show_name;
+
+  int custom_w; /* Custom-field edit buffers (seeded from Settings on open). */
+  int custom_h;
+  int custom_mines;
+  bool custom_seeded;
+
+  char name_buf[SCORE_NAME_MAX]; /* Enter-Name edit buffer. */
+  bool name_seeded;
+};
+
 /* Zero all action fields. */
-void ui_actions_clear(struct UiActions *a);
+void ui_actions_clear(struct UiActions* a);
 
 /* Apply the light/Win95 theme once at startup. */
 void ui_apply_theme(void);
 
 /* Draw the main menu bar (when settings->menu_visible). Returns its pixel
  * height (0 if hidden). Fills `out` with any triggered actions. */
-float ui_menu_bar(const struct Settings *s, struct UiActions *out);
+float ui_menu_bar(const struct Settings* s, struct UiActions* out);
 
-/* Drive the modal dialogs. `*show_*` flags are owned by app; ui sets them false
- * when the dialog closes and writes results into `out`. `level_for_name`
- * selects which difficulty's record the Enter-Name modal is recording. */
-void ui_dialogs(const struct Settings *s, struct UiActions *out,
-                bool *show_custom, bool *show_best, bool *show_about,
-                bool *show_name, int level_for_name);
+/* Drive the modal dialogs. `ds` (app-owned) carries visibility + edit buffers;
+ * ui clears a dialog's show_* when it closes and writes results into `out`. */
+void ui_dialogs(const struct Settings* s, struct UiActions* out,
+                struct DialogState* ds);
 
 #endif /* MINESWEEPER_UI_H */

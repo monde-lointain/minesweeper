@@ -11,12 +11,12 @@
  * every draw so successive calls differ — never loops, never crashes. The
  * state lives on the Board (b->rng_state), so the draw is reentrant and a given
  * board is reproducible from its state. */
-static uint32_t game_fallback_rng(struct Board *b, uint32_t n) {
+static uint32_t game_fallback_rng(struct Board* b, uint32_t n) {
   b->rng_state = b->rng_state * 1664525u + 1013904223u;
   return (b->rng_state >> 8) % n;
 }
 
-static uint32_t game_rand(struct Board *b, uint32_t n) {
+static uint32_t game_rand(struct Board* b, uint32_t n) {
   if (n == 0) {
     return 0;
   }
@@ -26,18 +26,12 @@ static uint32_t game_rand(struct Board *b, uint32_t n) {
   return game_fallback_rng(b, n);
 }
 
-/* Per-process seed source, advanced once per game_reset so successive games get
- * a distinct fallback layout. WARNING: process-global — never write a test that
- * asserts an exact FALLBACK layout; it would be order-dependent under gtest
- * shuffle. Tests needing a fixed layout must inject `rng` (scripted). */
-static uint32_t g_seed_source = 0x12345678u;
-
-static bool game_in_range(const struct Board *b, int x, int y) {
+static bool game_in_range(const struct Board* b, int x, int y) {
   return x >= 0 && y >= 0 && x < b->width && y < b->height;
 }
 
 /* Fill `out` with the in-range 8-neighbours of (x,y); returns the count. */
-static int game_neighbors(const struct Board *b, int x, int y, int out[8][2]) {
+static int game_neighbors(const struct Board* b, int x, int y, int out[8][2]) {
   int n = 0;
   for (int dy = -1; dy <= 1; ++dy) {
     for (int dx = -1; dx <= 1; ++dx) {
@@ -57,7 +51,7 @@ static int game_neighbors(const struct Board *b, int x, int y, int out[8][2]) {
   return n;
 }
 
-static int game_count_adjacent_mines(const struct Board *b, int x, int y) {
+static int game_count_adjacent_mines(const struct Board* b, int x, int y) {
   int nb[8][2];
   int n = game_neighbors(b, x, y, nb);
   int count = 0;
@@ -69,8 +63,8 @@ static int game_count_adjacent_mines(const struct Board *b, int x, int y) {
   return count;
 }
 
-void game_reset(struct Board *b, int w, int h, int mines, RngFn rng,
-                void *rng_ctx) {
+void game_reset(struct Board* b, int w, int h, int mines,
+                const struct Rng* rng) {
   memset(b, 0, sizeof *b);
   b->width = w;
   b->height = h;
@@ -79,13 +73,14 @@ void game_reset(struct Board *b, int w, int h, int mines, RngFn rng,
   b->revealed_count = 0;
   b->flag_count = 0;
   b->mines_placed = false;
-  b->rng = rng;
-  b->rng_ctx = rng_ctx;
-  g_seed_source = g_seed_source * 1664525u + 1013904223u;
-  b->rng_state = g_seed_source;
+  if (rng != NULL) {
+    b->rng = rng->fn;
+    b->rng_ctx = rng->ctx;
+    b->rng_state = rng->seed;
+  }
 }
 
-void game_place_mines(struct Board *b, int avoid_x, int avoid_y) {
+void game_place_mines(struct Board* b, int avoid_x, int avoid_y) {
   int total = b->width * b->height;
   int to_place = b->mines;
   /* Cannot place more mines than there are non-avoided cells. */
@@ -126,12 +121,12 @@ void game_place_mines(struct Board *b, int avoid_x, int avoid_y) {
 /* Reveal a single covered, non-flagged cell. Returns the count of newly
  * revealed cells (0 if it was a no-op). Mines are revealed too (caller checks
  * for loss). Fills queue with newly revealed zero-adjacent cells for flood. */
-static int game_step_one(struct Board *b, int x, int y) {
+static int game_step_one(struct Board* b, int x, int y) {
   if (!game_in_range(b, x, y)) {
     return 0;
   }
   int idx = game_index(b, x, y);
-  struct Cell *c = &b->cells[idx];
+  struct Cell* c = &b->cells[idx];
   if (c->revealed || c->flag == FLAG_MINE) {
     return 0;
   }
@@ -144,7 +139,7 @@ static int game_step_one(struct Board *b, int x, int y) {
 
 /* Iterative flood fill (StepBox analogue). Starts from (x,y); reveals connected
  * zero-adjacent regions and their numbered borders. No recursion. */
-static void game_flood(struct Board *b, int x, int y) {
+static void game_flood(struct Board* b, int x, int y) {
   int qx[BOARD_MAX_CELLS];
   int qy[BOARD_MAX_CELLS];
   int head = 0;
@@ -182,13 +177,13 @@ static void game_flood(struct Board *b, int x, int y) {
   }
 }
 
-static bool game_all_clear(const struct Board *b) {
+static bool game_all_clear(const struct Board* b) {
   return b->revealed_count == (b->width * b->height) - b->mines;
 }
 
 /* On win: auto-flag remaining mine cells so the counter reads zero (original
  * UpdateBombCount(-cBombLeft) behavior). Keeps flag_count consistent. */
-static void game_finish_win(struct Board *b) {
+static void game_finish_win(struct Board* b) {
   b->status = GAME_WON;
   for (int i = 0; i < b->width * b->height; ++i) {
     if (b->cells[i].mine && b->cells[i].flag != FLAG_MINE) {
@@ -198,7 +193,7 @@ static void game_finish_win(struct Board *b) {
   }
 }
 
-int game_reveal(struct Board *b, int x, int y) {
+int game_reveal(struct Board* b, int x, int y) {
   if (b->status == GAME_WON || b->status == GAME_LOST) {
     return REVEAL_NONE;
   }
@@ -214,7 +209,7 @@ int game_reveal(struct Board *b, int x, int y) {
   }
 
   int idx = game_index(b, x, y);
-  struct Cell *c = &b->cells[idx];
+  struct Cell* c = &b->cells[idx];
   if (c->revealed || c->flag == FLAG_MINE) {
     return REVEAL_NONE;
   }
@@ -235,7 +230,7 @@ int game_reveal(struct Board *b, int x, int y) {
   return REVEAL_OK;
 }
 
-static int game_count_flag_mine(const struct Board *b, int x, int y) {
+static int game_count_flag_mine(const struct Board* b, int x, int y) {
   int nb[8][2];
   int n = game_neighbors(b, x, y, nb);
   int count = 0;
@@ -247,7 +242,7 @@ static int game_count_flag_mine(const struct Board *b, int x, int y) {
   return count;
 }
 
-int game_chord(struct Board *b, int x, int y) {
+int game_chord(struct Board* b, int x, int y) {
   if (b->status != GAME_PLAYING) {
     return REVEAL_NONE;
   }
@@ -255,7 +250,7 @@ int game_chord(struct Board *b, int x, int y) {
     return REVEAL_NONE;
   }
   int idx = game_index(b, x, y);
-  struct Cell *c = &b->cells[idx];
+  struct Cell* c = &b->cells[idx];
   if (!c->revealed || c->mine) {
     return REVEAL_NONE;
   }
@@ -272,7 +267,7 @@ int game_chord(struct Board *b, int x, int y) {
     int nx = nb[i][0];
     int ny = nb[i][1];
     int nidx = game_index(b, nx, ny);
-    struct Cell *nc = &b->cells[nidx];
+    struct Cell* nc = &b->cells[nidx];
     if (nc->flag == FLAG_MINE || nc->revealed) {
       continue;
     }
@@ -301,7 +296,7 @@ int game_chord(struct Board *b, int x, int y) {
   return REVEAL_NONE;
 }
 
-void game_cycle_flag(struct Board *b, int x, int y, bool marks_enabled) {
+void game_cycle_flag(struct Board* b, int x, int y, bool marks_enabled) {
   if (b->status != GAME_READY && b->status != GAME_PLAYING) {
     return;
   }
@@ -309,7 +304,7 @@ void game_cycle_flag(struct Board *b, int x, int y, bool marks_enabled) {
     return;
   }
   int idx = game_index(b, x, y);
-  struct Cell *c = &b->cells[idx];
+  struct Cell* c = &b->cells[idx];
   if (c->revealed) {
     return;
   }
@@ -329,6 +324,6 @@ void game_cycle_flag(struct Board *b, int x, int y, bool marks_enabled) {
   }
 }
 
-int game_mines_remaining(const struct Board *b) {
+int game_mines_remaining(const struct Board* b) {
   return b->mines - b->flag_count;
 }

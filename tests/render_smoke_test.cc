@@ -20,8 +20,8 @@
 /* Average RGB + lit-pixel count over a sprite cell rendered at (px,py,w,h).
  * Uses only color/coverage, so it is immune to any vertical-flip in readback.
  */
-static void cell_stats(SDL_Surface *s, int px, int py, int w, int h, int *r_out,
-                       int *g_out, int *b_out, int *lit_out) {
+static void cell_stats(SDL_Surface* s, int px, int py, int w, int h, int* r_out,
+                       int* g_out, int* b_out, int* lit_out) {
   long r = 0;
   long g = 0;
   long b = 0;
@@ -58,8 +58,8 @@ TEST(RenderSmoke, SpriteIndexOrderNotReversed) {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     GTEST_SKIP() << "no SDL video: " << SDL_GetError();
   }
-  SDL_Window *win = nullptr;
-  SDL_Renderer *ren = nullptr;
+  SDL_Window* win = nullptr;
+  SDL_Renderer* ren = nullptr;
   ASSERT_TRUE(SDL_CreateWindowAndRenderer("d", 200, 100, 0, &win, &ren));
   SDL_SetRenderLogicalPresentation(ren, 200, 100,
                                    SDL_LOGICAL_PRESENTATION_DISABLED);
@@ -81,7 +81,7 @@ TEST(RenderSmoke, SpriteIndexOrderNotReversed) {
   SDL_FRect dln = {60, 0, 13, 23};
   SDL_RenderTexture(ren, a.led, &lneg, &dln);
 
-  SDL_Surface *surf = SDL_RenderReadPixels(ren, nullptr);
+  SDL_Surface* surf = SDL_RenderReadPixels(ren, nullptr);
   ASSERT_NE(surf, nullptr) << SDL_GetError();
 
   int r = 0;
@@ -114,8 +114,8 @@ TEST(RenderSmoke, SpritesActuallyPaint) {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     GTEST_SKIP() << "no SDL video: " << SDL_GetError();
   }
-  SDL_Window *win = nullptr;
-  SDL_Renderer *ren = nullptr;
+  SDL_Window* win = nullptr;
+  SDL_Renderer* ren = nullptr;
   ASSERT_TRUE(SDL_CreateWindowAndRenderer("t", 400, 500, 0, &win, &ren));
 
   Assets a;
@@ -124,7 +124,7 @@ TEST(RenderSmoke, SpritesActuallyPaint) {
   Settings s;
   config_defaults(&s);
   Board b;
-  game_reset(&b, 9, 9, 10, nullptr, nullptr);
+  game_reset(&b, 9, 9, 10, nullptr);
   Layout lay;
   render_compute_layout(&b, &s, 0, &lay);
 
@@ -133,7 +133,7 @@ TEST(RenderSmoke, SpritesActuallyPaint) {
   FrameView view = {BTN_HAPPY, -1, -1, 0};
   render_frame(ren, &a, &b, &lay, &view);
 
-  SDL_Surface *surf = SDL_RenderReadPixels(ren, nullptr);
+  SDL_Surface* surf = SDL_RenderReadPixels(ren, nullptr);
   ASSERT_NE(surf, nullptr) << SDL_GetError();
 
   /* Smiley centre must be the happy face's yellow, not the gray background. */

@@ -1,6 +1,7 @@
 # Project library: every module except main.cc. Source manifest is frozen by
 # Stream A; fan-out streams fill these files in but do not edit this list.
 add_library(minesweeper_lib STATIC
+  util/util.cc
   game/game.cc
   config/config.cc
   assets/assets.cc

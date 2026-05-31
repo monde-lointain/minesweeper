@@ -15,8 +15,8 @@ struct ScriptRng {
   size_t i = 0;
 };
 
-static uint32_t script_rng(void *ctx, uint32_t n) {
-  ScriptRng *s = static_cast<ScriptRng *>(ctx);
+static uint32_t script_rng(void* ctx, uint32_t n) {
+  ScriptRng* s = static_cast<ScriptRng*>(ctx);
   if (n == 0) return 0;
   if (s->i >= s->vals.size()) return 0;
   return s->vals[s->i++];
@@ -24,26 +24,32 @@ static uint32_t script_rng(void *ctx, uint32_t n) {
 
 /* Place mines at an explicit list of (x,y) coords by scripting the rng:
  * game_place_mines draws x then y per attempt and skips dups/avoided. */
-static void script_coords(ScriptRng *s,
+static void script_coords(ScriptRng* s,
                           std::initializer_list<std::pair<int, int>> coords) {
-  for (auto &c : coords) {
+  for (auto& c : coords) {
     s->vals.push_back(static_cast<uint32_t>(c.first));
     s->vals.push_back(static_cast<uint32_t>(c.second));
   }
 }
 
-static int mine_count(const Board &b) {
+static int mine_count(const Board& b) {
   int n = 0;
   for (int i = 0; i < b.width * b.height; ++i)
     if (b.cells[i].mine) ++n;
   return n;
 }
 
+/* Reset a board driven by a scripted RNG (wraps the struct Rng plumbing). */
+static void reset_scripted(Board* b, int w, int h, int mines, ScriptRng* s) {
+  Rng rng = {script_rng, s, 0};
+  game_reset(b, w, h, mines, &rng);
+}
+
 /* ---- Reset -------------------------------------------------------------- */
 
 TEST(Reset, InitializesGeometryAndState) {
   Board b;
-  game_reset(&b, 16, 12, 40, nullptr, nullptr);
+  game_reset(&b, 16, 12, 40, nullptr);
   EXPECT_EQ(b.width, 16);
   EXPECT_EQ(b.height, 12);
   EXPECT_EQ(b.mines, 40);
@@ -55,7 +61,7 @@ TEST(Reset, InitializesGeometryAndState) {
 
 TEST(Reset, ClearsAllCells) {
   Board b;
-  game_reset(&b, 9, 9, 10, nullptr, nullptr);
+  game_reset(&b, 9, 9, 10, nullptr);
   for (int i = 0; i < 9 * 9; ++i) {
     EXPECT_FALSE(b.cells[i].mine);
     EXPECT_FALSE(b.cells[i].revealed);
@@ -69,7 +75,7 @@ TEST(Reset, ClearsAllCells) {
 
 TEST(Placement, PlacesExactMineCount) {
   Board b;
-  game_reset(&b, 9, 9, 10, nullptr, nullptr);
+  game_reset(&b, 9, 9, 10, nullptr);
   game_place_mines(&b, 0, 0);
   EXPECT_EQ(mine_count(b), 10);
   EXPECT_TRUE(b.mines_placed);
@@ -79,7 +85,7 @@ TEST(Placement, NeverOnAvoidedCell) {
   /* Try every cell as the avoid target across many fallback placements. */
   for (int trial = 0; trial < 50; ++trial) {
     Board b;
-    game_reset(&b, 9, 9, 10, nullptr, nullptr);
+    game_reset(&b, 9, 9, 10, nullptr);
     int ax = trial % 9;
     int ay = (trial / 9) % 9;
     game_place_mines(&b, ax, ay);
@@ -94,7 +100,7 @@ TEST(Placement, ScriptedRngHonoredAndSkipsAvoided) {
   ScriptRng s;
   /* Want mines at (1,1),(2,2),(3,3). Script avoided (0,0) first -> skipped. */
   script_coords(&s, {{0, 0}, {1, 1}, {2, 2}, {3, 3}});
-  game_reset(&b, 9, 9, 3, script_rng, &s);
+  reset_scripted(&b, 9, 9, 3, &s);
   game_place_mines(&b, 0, 0);
   EXPECT_FALSE(b.cells[game_index(&b, 0, 0)].mine);
   EXPECT_TRUE(b.cells[game_index(&b, 1, 1)].mine);
@@ -108,8 +114,12 @@ TEST(Placement, FallbackVariesAcrossGames) {
    * (guards the per-reset seed source; a constant reseed would fail this). */
   Board a;
   Board b;
-  game_reset(&a, 16, 16, 40, nullptr, nullptr);
-  game_reset(&b, 16, 16, 40, nullptr, nullptr);
+  /* Distinct seeds must yield distinct fallback layouts. The per-board seed
+   * (formerly a process-global source) now comes from the caller. */
+  Rng rng_a = {nullptr, nullptr, 1};
+  Rng rng_b = {nullptr, nullptr, 2};
+  game_reset(&a, 16, 16, 40, &rng_a);
+  game_reset(&b, 16, 16, 40, &rng_b);
   game_place_mines(&a, 0, 0);
   game_place_mines(&b, 0, 0);
   int diff = 0;
@@ -124,7 +134,7 @@ TEST(Placement, AdjacencyCountsCorrect) {
   /* Mines forming an L around center (1,1) on a 3x3:
    * mines at (0,0),(1,0),(0,1). Center (1,1) should see 3 adjacent. */
   script_coords(&s, {{0, 0}, {1, 0}, {0, 1}});
-  game_reset(&b, 3, 3, 3, script_rng, &s);
+  reset_scripted(&b, 3, 3, 3, &s);
   game_place_mines(&b, 2, 2);
   EXPECT_EQ(b.cells[game_index(&b, 1, 1)].adjacent, 3);
   EXPECT_EQ(b.cells[game_index(&b, 2, 0)].adjacent, 1);
@@ -141,7 +151,7 @@ TEST(Flood, ZeroRegionRevealsConnectedAreaAndBorder) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{4, 4}});
-  game_reset(&b, 5, 5, 1, script_rng, &s);
+  reset_scripted(&b, 5, 5, 1, &s);
   int r = game_reveal(&b, 0, 0);
   /* All 24 non-mine cells revealed -> win. */
   EXPECT_EQ(r, REVEAL_WIN);
@@ -155,7 +165,7 @@ TEST(Flood, BorderNumbersStopExpansion) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{2, 2}});
-  game_reset(&b, 5, 5, 1, script_rng, &s);
+  reset_scripted(&b, 5, 5, 1, &s);
   int r = game_reveal(&b, 0, 0);
   EXPECT_EQ(r, REVEAL_WIN);
   EXPECT_EQ(b.revealed_count, 24);
@@ -169,7 +179,7 @@ TEST(Flood, NonZeroClickRevealsOnlyOne) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   int r = game_reveal(&b, 0, 0);
   EXPECT_EQ(r, REVEAL_OK);
   EXPECT_EQ(b.revealed_count, 1);
@@ -180,7 +190,7 @@ TEST(Flood, NonZeroClickRevealsOnlyOne) {
 
 TEST(Reveal, FirstClickPlacesMinesAndIsSafe) {
   Board b;
-  game_reset(&b, 9, 9, 10, nullptr, nullptr);
+  game_reset(&b, 9, 9, 10, nullptr);
   int r = game_reveal(&b, 4, 4);
   EXPECT_NE(r, REVEAL_LOSS);
   EXPECT_TRUE(b.mines_placed);
@@ -192,7 +202,7 @@ TEST(Reveal, HittingMineLoses) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   game_reveal(&b, 8, 8); /* first click safe, places mine at (1,0) */
   int r = game_reveal(&b, 1, 0);
   EXPECT_EQ(r, REVEAL_LOSS);
@@ -205,7 +215,7 @@ TEST(Reveal, FlaggedCellIsNoOp) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   game_reveal(&b, 8, 8);
   game_cycle_flag(&b, 0, 0, false);
   int r = game_reveal(&b, 0, 0);
@@ -217,7 +227,7 @@ TEST(Reveal, AlreadyRevealedIsNoOp) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   game_reveal(&b, 8, 8);
   int r = game_reveal(&b, 8, 8);
   EXPECT_EQ(r, REVEAL_NONE);
@@ -225,7 +235,7 @@ TEST(Reveal, AlreadyRevealedIsNoOp) {
 
 TEST(Reveal, OutOfRangeIsNoOp) {
   Board b;
-  game_reset(&b, 9, 9, 10, nullptr, nullptr);
+  game_reset(&b, 9, 9, 10, nullptr);
   EXPECT_EQ(game_reveal(&b, -1, 0), REVEAL_NONE);
   EXPECT_EQ(game_reveal(&b, 9, 0), REVEAL_NONE);
   EXPECT_EQ(game_reveal(&b, 0, 9), REVEAL_NONE);
@@ -235,7 +245,7 @@ TEST(Reveal, AfterGameOverIsNoOp) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   game_reveal(&b, 8, 8);
   game_reveal(&b, 1, 0); /* lose */
   int r = game_reveal(&b, 0, 0);
@@ -249,7 +259,7 @@ TEST(Win, RevealAllNonMinesWinsAndAutoFlags) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{2, 2}});
-  game_reset(&b, 3, 3, 1, script_rng, &s);
+  reset_scripted(&b, 3, 3, 1, &s);
   int r = game_reveal(&b, 0, 0); /* (0,0) is a 0 -> floods most */
   EXPECT_EQ(r, REVEAL_WIN);
   EXPECT_EQ(b.status, GAME_WON);
@@ -262,7 +272,7 @@ TEST(Win, RevealAllNonMinesWinsAndAutoFlags) {
 
 TEST(Flag, CycleWithMarks) {
   Board b;
-  game_reset(&b, 9, 9, 10, nullptr, nullptr);
+  game_reset(&b, 9, 9, 10, nullptr);
   game_cycle_flag(&b, 0, 0, true);
   EXPECT_EQ(b.cells[game_index(&b, 0, 0)].flag, FLAG_MINE);
   EXPECT_EQ(b.flag_count, 1);
@@ -276,7 +286,7 @@ TEST(Flag, CycleWithMarks) {
 
 TEST(Flag, CycleWithoutMarks) {
   Board b;
-  game_reset(&b, 9, 9, 10, nullptr, nullptr);
+  game_reset(&b, 9, 9, 10, nullptr);
   game_cycle_flag(&b, 0, 0, false);
   EXPECT_EQ(b.cells[game_index(&b, 0, 0)].flag, FLAG_MINE);
   EXPECT_EQ(b.flag_count, 1);
@@ -289,7 +299,7 @@ TEST(Flag, RevealedCellNotFlaggable) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   game_reveal(&b, 8, 8);
   /* (8,8) is now revealed (part of flood); flagging is a no-op. */
   int before = b.flag_count;
@@ -300,7 +310,7 @@ TEST(Flag, RevealedCellNotFlaggable) {
 
 TEST(Flag, MinesRemainingGoesNegativeWhenOverFlagged) {
   Board b;
-  game_reset(&b, 9, 9, 2, nullptr, nullptr);
+  game_reset(&b, 9, 9, 2, nullptr);
   game_cycle_flag(&b, 0, 0, false);
   game_cycle_flag(&b, 1, 0, false);
   game_cycle_flag(&b, 2, 0, false);
@@ -316,7 +326,7 @@ TEST(Chord, RevealsWhenFlagCountMatches) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   game_reveal(&b, 0, 0);
   EXPECT_EQ(b.cells[game_index(&b, 0, 0)].adjacent, 1);
   game_cycle_flag(&b, 1, 0, false); /* correct flag on the mine */
@@ -330,7 +340,7 @@ TEST(Chord, NoOpWhenFlagCountMismatch) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   game_reveal(&b, 0, 0); /* number 1, no flags placed */
   int r = game_chord(&b, 0, 0);
   EXPECT_EQ(r, REVEAL_NONE);
@@ -343,7 +353,7 @@ TEST(Chord, WrongFlagDetonates) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   game_reveal(&b, 0, 0);
   game_cycle_flag(&b, 0, 1, false); /* wrong flag, but count==1==number */
   int r = game_chord(&b, 0, 0);
@@ -356,7 +366,7 @@ TEST(Chord, OnUnrevealedIsNoOp) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   game_reveal(&b, 8, 8);
   int r = game_chord(&b, 0, 0); /* (0,0) not revealed */
   EXPECT_EQ(r, REVEAL_NONE);
@@ -368,7 +378,7 @@ TEST(Chord, QuestionMarkDoesNotCount) {
   Board b;
   ScriptRng s;
   script_coords(&s, {{1, 0}});
-  game_reset(&b, 9, 9, 1, script_rng, &s);
+  reset_scripted(&b, 9, 9, 1, &s);
   game_reveal(&b, 0, 0);
   game_cycle_flag(&b, 1, 0, true); /* -> FLAG_MINE */
   game_cycle_flag(&b, 1, 0, true); /* -> FLAG_QUESTION (count back to 0) */
@@ -381,7 +391,7 @@ TEST(Chord, QuestionMarkDoesNotCount) {
 
 TEST(MinesRemaining, EqualsMinesMinusFlagCount) {
   Board b;
-  game_reset(&b, 9, 9, 10, nullptr, nullptr);
+  game_reset(&b, 9, 9, 10, nullptr);
   EXPECT_EQ(game_mines_remaining(&b), 10);
   game_cycle_flag(&b, 0, 0, false);
   EXPECT_EQ(game_mines_remaining(&b), 9);

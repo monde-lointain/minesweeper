@@ -4,25 +4,16 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Build "dir/name" into buf, collapsing a trailing slash on dir. */
-static void assets_join_path(char *buf, size_t buf_size, const char *dir,
-                             const char *name) {
-  size_t len = strlen(dir);
-  if (len > 0 && (dir[len - 1] == '/' || dir[len - 1] == '\\')) {
-    snprintf(buf, buf_size, "%s%s", dir, name);
-  } else {
-    snprintf(buf, buf_size, "%s/%s", dir, name);
-  }
-}
+#include "minesweeper/util.h"
 
 /* Load one BMP into a texture with nearest-neighbor scaling. Returns null on
  * failure (diagnostic printed). */
-static SDL_Texture *assets_load_sheet(SDL_Renderer *renderer, const char *dir,
-                                      const char *name) {
+static SDL_Texture* assets_load_sheet(SDL_Renderer* renderer, const char* dir,
+                                      const char* name) {
   char path[1024];
-  assets_join_path(path, sizeof path, dir, name);
+  util_join_path(path, sizeof path, dir, name);
 
-  SDL_Surface *surf = SDL_LoadBMP(path);
+  SDL_Surface* surf = SDL_LoadBMP(path);
   if (surf == NULL) {
     printf("assets: SDL_LoadBMP(%s) failed: %s\n", path, SDL_GetError());
     return NULL;
@@ -32,14 +23,14 @@ static SDL_Texture *assets_load_sheet(SDL_Renderer *renderer, const char *dir,
    * convert indexed surfaces when creating a texture; the resulting indexed
    * texture is unrenderable ("Texture doesn't have a palette"). Convert to a
    * packed RGBA format first so the texture renders on every backend. */
-  SDL_Surface *rgba = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_RGBA32);
+  SDL_Surface* rgba = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_RGBA32);
   SDL_DestroySurface(surf);
   if (rgba == NULL) {
     printf("assets: SDL_ConvertSurface(%s) failed: %s\n", path, SDL_GetError());
     return NULL;
   }
 
-  SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, rgba);
+  SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, rgba);
   SDL_DestroySurface(rgba);
   if (tex == NULL) {
     printf("assets: SDL_CreateTextureFromSurface(%s) failed: %s\n", path,
@@ -51,7 +42,7 @@ static SDL_Texture *assets_load_sheet(SDL_Renderer *renderer, const char *dir,
   return tex;
 }
 
-bool assets_load(struct Assets *a, SDL_Renderer *renderer, const char *dir) {
+bool assets_load(struct Assets* a, SDL_Renderer* renderer, const char* dir) {
   memset(a, 0, sizeof *a);
 
   a->blocks_color = assets_load_sheet(renderer, dir, "blocks.bmp");
@@ -71,7 +62,7 @@ bool assets_load(struct Assets *a, SDL_Renderer *renderer, const char *dir) {
   return true;
 }
 
-void assets_free(struct Assets *a) {
+void assets_free(struct Assets* a) {
   if (a->blocks_color != NULL) {
     SDL_DestroyTexture(a->blocks_color);
   }
@@ -93,7 +84,7 @@ void assets_free(struct Assets *a) {
   memset(a, 0, sizeof *a);
 }
 
-void assets_set_color(struct Assets *a, bool color) {
+void assets_set_color(struct Assets* a, bool color) {
   if (color) {
     a->blocks = a->blocks_color;
     a->led = a->led_color;
@@ -129,13 +120,13 @@ SDL_FRect assets_button_rect(int face) {
   return r;
 }
 
-void assets_set_window_icon(SDL_Window *window, const char *dir) {
+void assets_set_window_icon(SDL_Window* window, const char* dir) {
   /* Best-effort: core SDL_LoadBMP cannot parse .ico; attempt it anyway and
    * no-op gracefully on failure. Never fail the app. */
   char path[1024];
-  assets_join_path(path, sizeof path, dir, "winmine.ico");
+  util_join_path(path, sizeof path, dir, "winmine.ico");
 
-  SDL_Surface *surf = SDL_LoadBMP(path);
+  SDL_Surface* surf = SDL_LoadBMP(path);
   if (surf == NULL) {
     return;
   }

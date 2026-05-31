@@ -7,9 +7,9 @@
 
 namespace {
 
-const char *kPath = "/tmp/ms_cfg_test.ini";
+const char* kPath = "/tmp/ms_cfg_test.ini";
 
-void fill_nondefault(Settings *s) {
+void fill_nondefault(Settings* s) {
   memset(s, 0, sizeof *s);
   s->difficulty = DIFF_CUSTOM;
   s->custom_w = 24;
@@ -30,7 +30,7 @@ void fill_nondefault(Settings *s) {
   strcpy(s->best_name[2], "Alan M Turing");
 }
 
-void expect_eq(const Settings *a, const Settings *b) {
+void expect_eq(const Settings* a, const Settings* b) {
   EXPECT_EQ(a->difficulty, b->difficulty);
   EXPECT_EQ(a->custom_w, b->custom_w);
   EXPECT_EQ(a->custom_h, b->custom_h);
@@ -93,7 +93,7 @@ TEST(ConfigTest, LoadMissingYieldsDefaults) {
 TEST(ConfigTest, ClampsOutOfRange) {
   /* Hand-write an INI with out-of-range scale and mines and a bad difficulty.
    */
-  FILE *f = fopen(kPath, "w");
+  FILE* f = fopen(kPath, "w");
   ASSERT_NE(f, nullptr);
   fprintf(f,
           "[game]\n"
@@ -112,7 +112,7 @@ TEST(ConfigTest, ClampsOutOfRange) {
 }
 
 TEST(ConfigTest, MissingKeysKeepDefaults) {
-  FILE *f = fopen(kPath, "w");
+  FILE* f = fopen(kPath, "w");
   ASSERT_NE(f, nullptr);
   fprintf(f, "[game]\nscale=4\n");
   fclose(f);

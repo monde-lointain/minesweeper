@@ -15,15 +15,17 @@
 #include <stdint.h>
 
 #include "minesweeper/assets.h"
+#include "minesweeper/audio.h"
 #include "minesweeper/game.h"
 #include "minesweeper/render.h"
 #include "minesweeper/types.h"
 #include "minesweeper/ui.h"
 
 struct AppState {
-  SDL_Window *window;
-  SDL_Renderer *renderer;
+  SDL_Window* window;
+  SDL_Renderer* renderer;
   struct Assets assets;
+  struct Audio audio;
   struct Board board;
   struct Settings settings;
 
@@ -48,10 +50,7 @@ struct AppState {
   uint64_t pause_started_ms; /* tick when pause began */
 
   int pending_name_level; /* level awaiting Enter-Name, -1 if none */
-  bool show_custom;
-  bool show_best;
-  bool show_about;
-  bool show_name;
+  struct DialogState dialogs;
 
   char asset_dir[1024];
   char pref_path[1024];
@@ -59,15 +58,15 @@ struct AppState {
 
 /* Allocate + initialize: SDL, window/renderer, ImGui, config, assets, first
  * game. Returns SDL_APP_CONTINUE on success. */
-SDL_AppResult app_init(struct AppState **out, int argc, char **argv);
+SDL_AppResult app_init(struct AppState** out, int argc, char** argv);
 
 /* One event. */
-SDL_AppResult app_event(struct AppState *s, SDL_Event *event);
+SDL_AppResult app_event(struct AppState* s, SDL_Event* event);
 
 /* One frame (continuous vsync redraw). */
-SDL_AppResult app_iterate(struct AppState *s);
+SDL_AppResult app_iterate(struct AppState* s);
 
 /* Teardown + save settings. */
-void app_quit(struct AppState *s);
+void app_quit(struct AppState* s);
 
 #endif /* MINESWEEPER_APP_H */

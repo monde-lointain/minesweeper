@@ -5,6 +5,10 @@
  *
  * Post-Stream-A amendment (authorized; see docs/2026-05-23-minesweeper-port-
  * design.md): added Board.rng_state so the fallback RNG is board-local.
+ *
+ * Post-Stream-A amendment (2026-05-31): game_reset takes a struct Rng* instead
+ * of (RngFn, void*); the per-process fallback seed source is gone. NULL rng =
+ * deterministic fallback (seed 0); the caller supplies entropy via Rng.seed.
  */
 #ifndef MINESWEEPER_GAME_H
 #define MINESWEEPER_GAME_H
@@ -31,7 +35,16 @@ enum RevealResult {
 };
 
 /* RNG injected for determinism. Returns a value in [0, n). */
-typedef uint32_t (*RngFn)(void *ctx, uint32_t n);
+typedef uint32_t (*RngFn)(void* ctx, uint32_t n);
+
+/* Randomness config for a board. fn==NULL uses the built-in fallback LCG seeded
+ * by `seed` (board-local, reentrant); fn!=NULL drives placement via fn(ctx,n).
+ */
+struct Rng {
+  RngFn fn;
+  void* ctx;
+  uint32_t seed;
+};
 
 struct Cell {
   uint8_t adjacent; /* count of adjacent mines, 0..8 (valid once revealed) */
@@ -51,38 +64,39 @@ struct Board {
   bool mines_placed;
   struct Cell cells[BOARD_MAX_CELLS];
   RngFn rng;
-  void *rng_ctx;
+  void* rng_ctx;
   uint32_t rng_state; /* fallback LCG state; board-local, reentrant */
 };
 
 /* Index helper: row-major, width-strided. Callers stay in [0,width)x[0,height).
  */
-static inline int game_index(const struct Board *b, int x, int y) {
+static inline int game_index(const struct Board* b, int x, int y) {
   return (y * b->width) + x;
 }
 
 /* Reset to a fresh, unplayed board of the given geometry. Mines are NOT placed
- * until the first reveal (first-click safety). rng/ctx drive placement. */
-void game_reset(struct Board *b, int w, int h, int mines, RngFn rng,
-                void *rng_ctx);
+ * until the first reveal (first-click safety). `rng` (may be NULL) drives
+ * placement; see struct Rng. */
+void game_reset(struct Board* b, int w, int h, int mines,
+                const struct Rng* rng);
 
 /* Place `mines` mines uniformly, never on (avoid_x,avoid_y); compute adjacency.
  * Normally called internally on first reveal; exposed for tests. */
-void game_place_mines(struct Board *b, int avoid_x, int avoid_y);
+void game_place_mines(struct Board* b, int avoid_x, int avoid_y);
 
 /* Left-click reveal with flood-fill of zero-adjacent regions. On first reveal,
  * places mines avoiding (x,y). Returns enum RevealResult. */
-int game_reveal(struct Board *b, int x, int y);
+int game_reveal(struct Board* b, int x, int y);
 
 /* Both-button chord on a revealed number: if adjacent FLAG_MINE count ==
  * number, reveal all non-flagged neighbours. Returns enum RevealResult. */
-int game_chord(struct Board *b, int x, int y);
+int game_chord(struct Board* b, int x, int y);
 
 /* Right-click cycle. With marks: none->mine->question->none; without:
  * none->mine->none. */
-void game_cycle_flag(struct Board *b, int x, int y, bool marks_enabled);
+void game_cycle_flag(struct Board* b, int x, int y, bool marks_enabled);
 
 /* mines - flag_count (may be negative). */
-int game_mines_remaining(const struct Board *b);
+int game_mines_remaining(const struct Board* b);
 
 #endif /* MINESWEEPER_GAME_H */

@@ -11,8 +11,9 @@
 #include <string.h>
 
 #include "imgui.h"
+#include "minesweeper/util.h"
 
-void ui_actions_clear(struct UiActions *a) {
+void ui_actions_clear(struct UiActions* a) {
   memset(a, 0, sizeof *a);
   a->set_difficulty = -1;
   a->set_scale = 0;
@@ -22,7 +23,7 @@ void ui_apply_theme(void) {
   ImGui::StyleColorsLight();
 
   /* Capture style as a pointer (taking the address declares no reference). */
-  ImGuiStyle *style = &ImGui::GetStyle();
+  ImGuiStyle* style = &ImGui::GetStyle();
   ImVec4 gray = ImVec4(0.75F, 0.75F, 0.75F, 1.0F);
   ImVec4 popup = ImVec4(0.75F, 0.75F, 0.75F, 1.0F);
 
@@ -31,7 +32,7 @@ void ui_apply_theme(void) {
   style->Colors[ImGuiCol_PopupBg] = popup;
 }
 
-float ui_menu_bar(const struct Settings *s, struct UiActions *out) {
+float ui_menu_bar(const struct Settings* s, struct UiActions* out) {
   if (!s->menu_visible) {
     return 0.0F;
   }
@@ -107,74 +108,53 @@ float ui_menu_bar(const struct Settings *s, struct UiActions *out) {
   return height;
 }
 
-/* Clamp helper (free function, no <algorithm>). */
-static int ui_clamp(int v, int lo, int hi) {
-  if (v < lo) {
-    return lo;
-  }
-  if (v > hi) {
-    return hi;
-  }
-  return v;
-}
-
-void ui_dialogs(const struct Settings *s, struct UiActions *out,
-                bool *show_custom, bool *show_best, bool *show_about,
-                bool *show_name, int level_for_name) {
-  (void)level_for_name;
-
-  /* Persisted edit buffers across frames while a dialog is open. */
-  static int cw = 0;
-  static int ch = 0;
-  static int cm = 0;
-  static bool custom_seeded = false;
-  static char name_buf[SCORE_NAME_MAX];
-  static bool name_seeded = false;
-
-  /* --- Custom dialog --- */
-  if (*show_custom) {
-    if (!custom_seeded) {
-      cw = s->custom_w;
-      ch = s->custom_h;
-      cm = s->custom_mines;
-      custom_seeded = true;
+static void ui_dialog_custom(const struct Settings* s, struct UiActions* out,
+                             struct DialogState* ds) {
+  if (ds->show_custom) {
+    if (!ds->custom_seeded) {
+      ds->custom_w = s->custom_w;
+      ds->custom_h = s->custom_h;
+      ds->custom_mines = s->custom_mines;
+      ds->custom_seeded = true;
     }
     ImGui::OpenPopup("Custom Field");
   }
   if (ImGui::BeginPopupModal("Custom Field", NULL,
                              ImGuiWindowFlags_AlwaysAutoResize)) {
-    ImGui::InputInt("Width", &cw);
-    ImGui::InputInt("Height", &ch);
-    ImGui::InputInt("Mines", &cm);
+    ImGui::InputInt("Width", &ds->custom_w);
+    ImGui::InputInt("Height", &ds->custom_h);
+    ImGui::InputInt("Mines", &ds->custom_mines);
 
     if (ImGui::Button("OK")) {
-      int w = ui_clamp(cw, BOARD_MIN_W, BOARD_MAX_W);
-      int h = ui_clamp(ch, BOARD_MIN_H, BOARD_MAX_H);
-      int m = ui_clamp(cm, BOARD_MIN_MINES, w * h - 1);
+      int w = util_clamp(ds->custom_w, BOARD_MIN_W, BOARD_MAX_W);
+      int h = util_clamp(ds->custom_h, BOARD_MIN_H, BOARD_MAX_H);
+      int m = util_clamp(ds->custom_mines, BOARD_MIN_MINES, w * h - 1);
       out->custom_applied = true;
       out->custom_w = w;
       out->custom_h = h;
       out->custom_mines = m;
-      *show_custom = false;
-      custom_seeded = false;
+      ds->show_custom = false;
+      ds->custom_seeded = false;
       ImGui::CloseCurrentPopup();
     }
     ImGui::SameLine();
     if (ImGui::Button("Cancel")) {
-      *show_custom = false;
-      custom_seeded = false;
+      ds->show_custom = false;
+      ds->custom_seeded = false;
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();
   }
+}
 
-  /* --- Best Times dialog --- */
-  if (*show_best) {
+static void ui_dialog_best(const struct Settings* s, struct UiActions* out,
+                           struct DialogState* ds) {
+  if (ds->show_best) {
     ImGui::OpenPopup("Best Times");
   }
   if (ImGui::BeginPopupModal("Best Times", NULL,
                              ImGuiWindowFlags_AlwaysAutoResize)) {
-    static const char *level_names[LEVEL_COUNT] = {"Beginner", "Intermediate",
+    static const char* level_names[LEVEL_COUNT] = {"Beginner", "Intermediate",
                                                    "Expert"};
     for (int i = 0; i < LEVEL_COUNT; ++i) {
       ImGui::Text("%-14s %3d seconds   %s", level_names[i], s->best_time[i],
@@ -186,14 +166,15 @@ void ui_dialogs(const struct Settings *s, struct UiActions *out,
     }
     ImGui::SameLine();
     if (ImGui::Button("OK")) {
-      *show_best = false;
+      ds->show_best = false;
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();
   }
+}
 
-  /* --- About dialog --- */
-  if (*show_about) {
+static void ui_dialog_about(struct DialogState* ds) {
+  if (ds->show_about) {
     ImGui::OpenPopup("About Minesweeper");
   }
   if (ImGui::BeginPopupModal("About Minesweeper", NULL,
@@ -202,32 +183,41 @@ void ui_dialogs(const struct Settings *s, struct UiActions *out,
     ImGui::Text("Cross-platform port (Dear ImGui).");
     ImGui::Separator();
     if (ImGui::Button("OK")) {
-      *show_about = false;
+      ds->show_about = false;
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();
   }
+}
 
-  /* --- Enter Name dialog --- */
-  if (*show_name) {
-    if (!name_seeded) {
-      name_buf[0] = '\0';
-      name_seeded = true;
+static void ui_dialog_name(struct UiActions* out, struct DialogState* ds) {
+  if (ds->show_name) {
+    if (!ds->name_seeded) {
+      ds->name_buf[0] = '\0';
+      ds->name_seeded = true;
     }
     ImGui::OpenPopup("Enter Name");
   }
   if (ImGui::BeginPopupModal("Enter Name", NULL,
                              ImGuiWindowFlags_AlwaysAutoResize)) {
     ImGui::Text("You have the fastest time!");
-    ImGui::InputText("Name", name_buf, sizeof name_buf);
+    ImGui::InputText("Name", ds->name_buf, sizeof ds->name_buf);
     if (ImGui::Button("OK")) {
       out->name_entered = true;
-      memcpy(out->name, name_buf, sizeof out->name);
+      memcpy(out->name, ds->name_buf, sizeof out->name);
       out->name[sizeof out->name - 1] = '\0';
-      *show_name = false;
-      name_seeded = false;
+      ds->show_name = false;
+      ds->name_seeded = false;
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();
   }
+}
+
+void ui_dialogs(const struct Settings* s, struct UiActions* out,
+                struct DialogState* ds) {
+  ui_dialog_custom(s, out, ds);
+  ui_dialog_best(s, out, ds);
+  ui_dialog_about(ds);
+  ui_dialog_name(out, ds);
 }
