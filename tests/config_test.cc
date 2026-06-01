@@ -7,7 +7,9 @@
 
 namespace {
 
-const char* kPath = "/tmp/ms_cfg_test.ini";
+/* Relative to the test's working dir (writable on every OS); a hardcoded
+ * "/tmp/..." path doesn't exist on Windows -> fopen fails. */
+const char* kPath = "ms_cfg_test.ini";
 
 void fill_nondefault(Settings* s) {
   memset(s, 0, sizeof *s);
@@ -82,7 +84,7 @@ TEST(ConfigTest, RoundTrip) {
 
 TEST(ConfigTest, LoadMissingYieldsDefaults) {
   Settings s;
-  int rc = config_load(&s, "/tmp/ms_cfg_does_not_exist_42.ini");
+  int rc = config_load(&s, "ms_cfg_does_not_exist_42.ini");
   EXPECT_NE(rc, 0);
 
   Settings def;
