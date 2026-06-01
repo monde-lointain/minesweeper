@@ -15,6 +15,7 @@ set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+set(SDL_X11_XTEST OFF CACHE BOOL "" FORCE)  # libxtst-dev not installed on CI runners; game doesn't use synthetic input
 FetchContent_MakeAvailable(SDL3)
 
 # ---------------------------------------------------------------------------
