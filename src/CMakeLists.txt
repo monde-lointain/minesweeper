@@ -26,7 +26,11 @@ target_link_libraries(minesweeper_lib PUBLIC
 # Warnings on our code only (deps are SYSTEM / separate targets). Warnings-as-
 # errors is applied below via the COMPILE_WARNING_AS_ERROR property, not a raw
 # -Werror flag, so it never reaches dependency targets.
-set(MINESWEEPER_WARNINGS -Wall -Wextra -Wpedantic)
+if(MSVC)
+  set(MINESWEEPER_WARNINGS /W4)
+else()
+  set(MINESWEEPER_WARNINGS -Wall -Wextra -Wpedantic)
+endif()
 target_compile_options(minesweeper_lib PRIVATE ${MINESWEEPER_WARNINGS})
 
 # Executable.
