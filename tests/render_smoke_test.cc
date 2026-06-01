@@ -55,12 +55,16 @@ static void cell_stats(SDL_Surface* s, int px, int py, int w, int h, int* r_out,
  * by color and lit-pixel count, which survive readback orientation quirks. */
 TEST(RenderSmoke, SpriteIndexOrderNotReversed) {
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen");
+  /* Force the CPU software renderer: the offscreen driver's default GPU
+   * renderer can't get a context on headless macOS CI runners. */
+  SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     GTEST_SKIP() << "no SDL video: " << SDL_GetError();
   }
   SDL_Window* win = nullptr;
   SDL_Renderer* ren = nullptr;
-  ASSERT_TRUE(SDL_CreateWindowAndRenderer("d", 200, 100, 0, &win, &ren));
+  ASSERT_TRUE(SDL_CreateWindowAndRenderer("d", 200, 100, 0, &win, &ren))
+      << SDL_GetError();
   SDL_SetRenderLogicalPresentation(ren, 200, 100,
                                    SDL_LOGICAL_PRESENTATION_DISABLED);
   Assets a;
@@ -111,12 +115,16 @@ TEST(RenderSmoke, SpriteIndexOrderNotReversed) {
 
 TEST(RenderSmoke, SpritesActuallyPaint) {
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen");
+  /* Force the CPU software renderer: the offscreen driver's default GPU
+   * renderer can't get a context on headless macOS CI runners. */
+  SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     GTEST_SKIP() << "no SDL video: " << SDL_GetError();
   }
   SDL_Window* win = nullptr;
   SDL_Renderer* ren = nullptr;
-  ASSERT_TRUE(SDL_CreateWindowAndRenderer("t", 400, 500, 0, &win, &ren));
+  ASSERT_TRUE(SDL_CreateWindowAndRenderer("t", 400, 500, 0, &win, &ren))
+      << SDL_GetError();
 
   Assets a;
   ASSERT_TRUE(assets_load(&a, ren, ASSET_DIR)) << "assets_load failed";
