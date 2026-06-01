@@ -22,7 +22,7 @@ enum {
   SP_BOTTOM = 12,                    /* dyBottomSpace */
   LED_TOP = SP_TOP + 4,              /* dyTopLed = 16 */
   GRID_OFF_X = SP_LEFT,              /* dxGridOff = 12 */
-  GRID_OFF_Y = LED_TOP + LED_H + 16, /* dyGridOff = 55 */
+  GRID_OFF_Y = (int)LED_TOP + (int)LED_H + 16, /* dyGridOff = 55; cast: cross-enum (MSVC C5054) */
   LEFT_BOMB = SP_LEFT + 5,           /* dxLeftBomb = 17 */
   RIGHT_TIME = SP_RIGHT + 5          /* dxRightTime = 17 */
 };
