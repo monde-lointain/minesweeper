@@ -128,7 +128,9 @@ static void ui_dialog_custom(const struct Settings* s, struct UiActions* out,
     if (ImGui::Button("OK")) {
       int w = util_clamp(ds->custom_w, BOARD_MIN_W, BOARD_MAX_W);
       int h = util_clamp(ds->custom_h, BOARD_MIN_H, BOARD_MAX_H);
-      int m = util_clamp(ds->custom_mines, BOARD_MIN_MINES, w * h - 1);
+      int m =
+          util_clamp(ds->custom_mines, BOARD_MIN_MINES,
+                     util_min(w * h - 1, BOARD_MAX_MINES));
       out->custom_applied = true;
       out->custom_w = w;
       out->custom_h = h;

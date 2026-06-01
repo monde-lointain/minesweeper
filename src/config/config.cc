@@ -181,7 +181,8 @@ int config_load(struct Settings* s, const char* path) {
   s->custom_w = util_clamp(s->custom_w, BOARD_MIN_W, BOARD_MAX_W);
   s->custom_h = util_clamp(s->custom_h, BOARD_MIN_H, BOARD_MAX_H);
   s->custom_mines = util_clamp(s->custom_mines, BOARD_MIN_MINES,
-                               s->custom_w * s->custom_h - 1);
+                               util_min(s->custom_w * s->custom_h - 1,
+                                        BOARD_MAX_MINES));
   s->scale = util_clamp(s->scale, 1, 4);
 
   return 0;

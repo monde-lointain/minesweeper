@@ -18,13 +18,15 @@ enum Difficulty {
   DIFF_CUSTOM = 3
 };
 
-/* Board dimension / mine limits (mirror original winmine). */
+/* Board dimension / mine limits (minima mirror original winmine; maxima
+ * raised well beyond it). */
 enum {
   BOARD_MIN_W = 9,
   BOARD_MIN_H = 9,
-  BOARD_MAX_W = 30,
-  BOARD_MAX_H = 24,
+  BOARD_MAX_W = 100,
+  BOARD_MAX_H = 100,
   BOARD_MIN_MINES = 10,
+  BOARD_MAX_MINES = 2500, /* global ceiling; per-board cap is min(this, w*h-1) */
   BOARD_MAX_CELLS = BOARD_MAX_W * BOARD_MAX_H,
   SCORE_NAME_MAX = 32 /* per high-score name, incl. NUL */
 };

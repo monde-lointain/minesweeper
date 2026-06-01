@@ -10,6 +10,9 @@
 /* Clamp v into [lo, hi]. */
 int util_clamp(int v, int lo, int hi);
 
+/* Return the smaller of a, b. */
+int util_min(int a, int b);
+
 /* Build "dir/name" into buf, collapsing a trailing '/' or '\\' on dir. */
 void util_join_path(char* buf, size_t buf_size, const char* dir,
                     const char* name);

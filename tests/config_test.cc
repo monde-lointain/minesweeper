@@ -111,6 +111,44 @@ TEST(ConfigTest, ClampsOutOfRange) {
   EXPECT_EQ(s.custom_mines, 9 * 9 - 1); /* clamped to w*h-1 */
 }
 
+TEST(ConfigTest, AcceptsLargeBoard) {
+  /* 100x100 is the raised maximum — must not be clamped down. */
+  FILE* f = fopen(kPath, "w");
+  ASSERT_NE(f, nullptr);
+  fprintf(f,
+          "[game]\n"
+          "difficulty=3\n"
+          "custom_w=100\n"
+          "custom_h=100\n"
+          "custom_mines=2500\n");
+  fclose(f);
+
+  Settings s;
+  ASSERT_EQ(config_load(&s, kPath), 0);
+  EXPECT_EQ(s.custom_w, BOARD_MAX_W);
+  EXPECT_EQ(s.custom_h, BOARD_MAX_H);
+  EXPECT_EQ(s.custom_w, 100);
+  EXPECT_EQ(s.custom_h, 100);
+  EXPECT_EQ(s.custom_mines, 2500);
+}
+
+TEST(ConfigTest, ClampsMinesToMax) {
+  /* Even on a huge board, mines cap at BOARD_MAX_MINES (2500), not w*h-1. */
+  FILE* f = fopen(kPath, "w");
+  ASSERT_NE(f, nullptr);
+  fprintf(f,
+          "[game]\n"
+          "difficulty=3\n"
+          "custom_w=100\n"
+          "custom_h=100\n"
+          "custom_mines=5000\n");
+  fclose(f);
+
+  Settings s;
+  ASSERT_EQ(config_load(&s, kPath), 0);
+  EXPECT_EQ(s.custom_mines, 2500); /* == BOARD_MAX_MINES */
+}
+
 TEST(ConfigTest, MissingKeysKeepDefaults) {
   FILE* f = fopen(kPath, "w");
   ASSERT_NE(f, nullptr);
