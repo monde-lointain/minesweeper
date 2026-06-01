@@ -44,6 +44,14 @@ target_link_libraries(minesweeper PRIVATE minesweeper_lib)
 set_target_properties(minesweeper_lib minesweeper
   PROPERTIES COMPILE_WARNING_AS_ERROR ON)
 
+# MSVC deprecates ISO C functions (strncpy, etc.) via C4996, pushing its
+# non-portable _s variants.  This codebase is intentionally C-style; opt out
+# so /W4 + COMPILE_WARNING_AS_ERROR stays in force for real warnings.
+if(MSVC)
+  target_compile_definitions(minesweeper_lib PRIVATE _CRT_SECURE_NO_WARNINGS)
+  target_compile_definitions(minesweeper PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
 # Orthodox C++ enforcement: project targets only (never deps, never tests).
 if(orthodoxy_plugin_FOUND)
   target_link_libraries(minesweeper_lib PRIVATE orthodoxy::plugin)
