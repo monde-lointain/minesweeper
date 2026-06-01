@@ -9,7 +9,7 @@ Run the CI-rescue loop for the current branch's latest `ci.yml` run.
 Args (all optional):
 - `max_iterations` (positional integer) — cap on total pushes across all jobs. Default: 6.
 - `--auto-push` — push each locally-verified fix without asking. Default: ask.
-  Applies to `build-test` (Linux) only; `build-macos` / `build-windows` are never
+  Applies to `build-linux` (Linux) only; `build-macos` / `build-windows` are never
   auto-pushed — they cannot be built on this Linux host, so the diff-confirm is
   the only safety gate.
 

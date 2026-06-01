@@ -1,6 +1,6 @@
 ---
 name: rescuing-ci-failures
-description: Use when a GitHub Actions ci.yml run is red on the current branch (jobs build-test / build-macos / build-windows) and the goal is to pull failed-job logs, triage, fix, verify, push, and iterate until green. Especially the macOS (AppleClang) and Windows (MSVC) legs, which CANNOT be built from this Linux host, so their fixes are blind edits the next CI run validates. Bounded loop: per-job error-signature dedup, iteration cap, local-verify-first for Linux, category gate. Lean inline state (no helper scripts, no committed state).
+description: Use when a GitHub Actions ci.yml run is red on the current branch (jobs build-linux / build-macos / build-windows) and the goal is to pull failed-job logs, triage, fix, verify, push, and iterate until green. Especially the macOS (AppleClang) and Windows (MSVC) legs, which CANNOT be built from this Linux host, so their fixes are blind edits the next CI run validates. Bounded loop: per-job error-signature dedup, iteration cap, local-verify-first for Linux, category gate. Lean inline state (no helper scripts, no committed state).
 ---
 
 # Rescuing CI Failures
@@ -17,7 +17,7 @@ stop conditions, but tuned to **this** project's three jobs. **No helper script
 and no committed state** — iteration state lives inline (a TodoWrite list + an
 uncommitted `/tmp/ci-rescue-<branch>.json` scratch file).
 
-**The defining constraint:** the Linux job (`build-test`) reproduces locally on
+**The defining constraint:** the Linux job (`build-linux`) reproduces locally on
 this host; `build-macos` and `build-windows` do **not**. So Linux fixes are
 verified locally before the slow GHA round-trip, but mac/win fixes are reasoned
 from the log, confirmed with the user, and proven only by the next CI run.
@@ -65,7 +65,7 @@ scratch file `/tmp/ci-rescue-<branch>.json`:
   "max_iterations": 6,
   "auto_push": false,
   "iteration_count": 0,
-  "last_signature_by_job": { "build-test": "sha256:…" },
+  "last_signature_by_job": { "build-linux": "sha256:…" },
   "attempted_fixes": [
     { "iteration": 1, "job": "build-windows", "category": "compiler-error",
       "summary": "…", "commit_sha": "…", "signature": "sha256:…" }
@@ -142,7 +142,7 @@ scratch file `/tmp/ci-rescue-<branch>.json`:
 
 5. **Select ONE job** (one job per iteration — see Why one job). When several jobs
    fail, pick by deterministic order, locally-reproducible first so the fix can be
-   verified fast: `build-test` → `build-windows` → `build-macos`. Triage **that
+   verified fast: `build-linux` → `build-windows` → `build-macos`. Triage **that
    job's log section only**.
 
 6. **Triage** the selected job into one category + compute its error signature.
@@ -171,13 +171,13 @@ scratch file `/tmp/ci-rescue-<branch>.json`:
     git diff --quiet HEAD~1 HEAD && { echo "empty commit"; exit 13; }
     ```
 
-12. **Verify locally (before push) — Linux only.** If the job is `build-test`, run
+12. **Verify locally (before push) — Linux only.** If the job is `build-linux`, run
     the mapped command and require green (see Local verification). `build-macos` /
     `build-windows` are NOT reproducible from this Linux host — skip local verify
     and rely on the next CI run.
 
 13. **Confirm push.** If `auto_push == true` AND the job is locally verified
-    (`build-test` only) → push. Otherwise (**always** for mac/win) →
+    (`build-linux` only) → push. Otherwise (**always** for mac/win) →
     AskUserQuestion with the diff summary; on rejection, escalate `divr`.
 
 14. **Push** `git push` (or `git push -u origin "$branch"` if no upstream);
@@ -200,7 +200,7 @@ each is consumed by a separate iteration. Fixing one job and exposing a
 Every job builds SDL3 / SDL3_mixer / ImGui / gtest from source via FetchContent,
 so all three are slow. ETA rules of thumb:
 
-- `build-test` (Linux) ≈ 10–20 min — also installs clang-22 via `llvm.sh` and the
+- `build-linux` (Linux) ≈ 10–20 min — also installs clang-22 via `llvm.sh` and the
   SDL X11/Wayland apt deps. Do NOT block; `ScheduleWakeup` (≥270s) re-entering
   `/ci-rescue`, which reads `status: running` and resumes.
 - `build-macos` / `build-windows` ≈ 5–15 min, vary with runner availability →
@@ -291,12 +291,12 @@ defeating dedup. Dedup compares against `last_signature_by_job[job]`: fixing
 
 | Failed job | Local command (verify the fix BEFORE push) |
 |---|---|
-| `build-test` (Linux) | `cmake -B build-rescue -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-22 -DCMAKE_CXX_COMPILER=clang++-22` → `cmake --build build-rescue -j"$(nproc)"` → `ctest --test-dir build-rescue --output-on-failure`. For a `lint` failure also: `cmake --build build-rescue --target tidy`. |
+| `build-linux` (Linux) | `cmake -B build-rescue -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-22 -DCMAKE_CXX_COMPILER=clang++-22` → `cmake --build build-rescue -j"$(nproc)"` → `ctest --test-dir build-rescue --output-on-failure`. For a `lint` failure also: `cmake --build build-rescue --target tidy`. |
 | `build-windows`, `build-macos` | Not reproducible from this Linux host — read the log, reason, confirm the blind edit with the user, let the next CI run be the test. |
 
 ## Local verification
 
-For `build-test`, run the mapped command; require it green before pushing.
+For `build-linux`, run the mapped command; require it green before pushing.
 Caveats:
 
 - **Use a dedicated `build-rescue/` dir** (the command above), not the user's
@@ -383,7 +383,7 @@ fixes have no local test.
 ## Cross-references
 
 - [[superpowers:systematic-debugging]] — the fix subagent must use it.
-- `.github/workflows/ci.yml` — the workflow this skill rescues (jobs `build-test`,
+- `.github/workflows/ci.yml` — the workflow this skill rescues (jobs `build-linux`,
   `build-macos`, `build-windows`).
 - `src/CMakeLists.txt` — per-compiler warning flags (`/W4` for MSVC, else
   `-Wall -Wextra -Wpedantic`) + `COMPILE_WARNING_AS_ERROR`.
