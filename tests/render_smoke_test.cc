@@ -63,8 +63,12 @@ TEST(RenderSmoke, SpriteIndexOrderNotReversed) {
   }
   SDL_Window* win = nullptr;
   SDL_Renderer* ren = nullptr;
-  ASSERT_TRUE(SDL_CreateWindowAndRenderer("d", 200, 100, 0, &win, &ren))
-      << SDL_GetError();
+  if (!SDL_CreateWindowAndRenderer("d", 200, 100, 0, &win, &ren)) {
+    /* Headless CI without a usable GL/GLES library (e.g. macOS runners) can't
+     * create a renderer; skip rather than fail — this guards rendering only
+     * where a renderer exists (Linux CI, dev machines). */
+    GTEST_SKIP() << "no renderer: " << SDL_GetError();
+  }
   SDL_SetRenderLogicalPresentation(ren, 200, 100,
                                    SDL_LOGICAL_PRESENTATION_DISABLED);
   Assets a;
@@ -123,8 +127,10 @@ TEST(RenderSmoke, SpritesActuallyPaint) {
   }
   SDL_Window* win = nullptr;
   SDL_Renderer* ren = nullptr;
-  ASSERT_TRUE(SDL_CreateWindowAndRenderer("t", 400, 500, 0, &win, &ren))
-      << SDL_GetError();
+  if (!SDL_CreateWindowAndRenderer("t", 400, 500, 0, &win, &ren)) {
+    /* See note above: skip where no renderer can be created (headless macOS). */
+    GTEST_SKIP() << "no renderer: " << SDL_GetError();
+  }
 
   Assets a;
   ASSERT_TRUE(assets_load(&a, ren, ASSET_DIR)) << "assets_load failed";
